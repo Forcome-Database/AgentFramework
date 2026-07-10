@@ -1,0 +1,11 @@
+{
+  "name": "agent-framework",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test",
+    "validate": "node scripts/validate-rules.mjs",
+    "check-docs": "node scripts/check-docs.mjs"
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "name": "agent-framework",
+  "version": "0.1.0",
+  "description": "Scan a project's real tech stack and assemble a project-specific AGENTS.md from 26 conditioned rule blocks, gated by five self-checks.",
+  "author": {
+    "name": "Leo Xia"
+  },
+  "license": "MIT",
+  "keywords": ["agents-md", "constraints", "rules", "governance"],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Agent Framework",
+    "shortDescription": "为项目生成专属的 AGENTS.md 约束体系。",
+    "longDescription": "一个规则素材库与生成器。它先扫描目标项目的依赖清单与目录结构，逐块判定 26 个带适用条件的规则块，只写入有文件系统证据支撑的规则，再通过溯源、路径存在、样例污染、占位符、互斥五道门。默认排除：没有证据就不写。",
+    "developerName": "Leo Xia",
+    "category": "Productivity",
+    "capabilities": ["AGENTS.md", "Code Governance", "Project Setup"],
+    "defaultPrompt": [
+      "为当前项目初始化 agent 框架",
+      "扫描这个项目并生成 AGENTS.md",
+      "检查这个项目的 AGENTS.md 与 CLAUDE.md 是否已经分叉"
+    ]
+  }
+}
