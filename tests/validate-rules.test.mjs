@@ -119,3 +119,17 @@ test('报告档声明作用域被拒绝', () => {
   assert.match(errors[0], /legacy\/g\.md/)
   assert.match(errors[0], /作用域/)
 })
+
+test('自动档作用域逃出仓库被拒绝', () => {
+  const errors = runValidation(fixture('invalid-auto-scope-escape-repo'))
+  assert.equal(errors.length, 1)
+  assert.match(errors[0], /legacy\/h\.md/)
+  assert.match(errors[0], /作用域/)
+})
+
+test('自动档作用域为 docs/ 下非文档被拒绝', () => {
+  const errors = runValidation(fixture('invalid-auto-scope-nondoc'))
+  assert.equal(errors.length, 1)
+  assert.match(errors[0], /legacy\/i\.md/)
+  assert.match(errors[0], /作用域/)
+})

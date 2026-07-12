@@ -98,11 +98,21 @@ export function validateExclusivePairs (blocks) {
   return errors
 }
 
-// 可逆性为「自动」的块只许写文档。约束的是「写」的范围，不是「扫」的范围：
-// Legacy Scan 按定义只读（REFACTOR.md 阶段 2 禁止写操作），扫什么无关安全。
-// 自动档只许写文档：任意 .md 文件，或 docs/ 下的任何文件。
-// AGENTS.md / CLAUDE.md / CHANGELOG.md 都被 \.md$ 涵盖，不必单列。
-const DOC_SCOPE = /^docs\/|\.md$/
+// 自动档会让 AI 直接动手改文件，所以作用域有两个上限，缺一不可：
+//   类型上限 —— .md 文件，或 docs/ 下的目录
+//   位置上限 —— 仓库内的相对路径。绝对路径与 .. 逃逸一律拒绝
+//
+// 位置上限不是多余的。一个只查后缀的白名单会放行 ../../other-repo/README.md
+// 与 ~/.claude/CLAUDE.md —— 那正是本闸门要挡住的、无人复核的跨仓库改动。
+export function isDocScope (scope) {
+  const p = scope.replace(/\\/g, '/')
+  if (p.startsWith('/') || /^[A-Za-z]:/.test(p)) return false
+  if (p.split('/').includes('..')) return false
+  if (p.endsWith('.md')) return true
+  const last = p.split('/').filter(Boolean).pop() ?? ''
+  const isDir = p.endsWith('/') || !last.includes('.')
+  return (p === 'docs' || p.startsWith('docs/')) && isDir
+}
 
 export function validateRemediation (block) {
   const errors = []
@@ -132,7 +142,7 @@ export function validateRemediation (block) {
         errors.push(`${relPath}: 可逆性为「自动」的块必须声明作用域 —— 不声明写哪里，就无法判定它是否只碰文档`)
       }
       for (const s of scopes) {
-        if (!DOC_SCOPE.test(s)) {
+        if (!isDocScope(s)) {
           errors.push(`${relPath}: 自动档的作用域 ${s} 不在文档白名单内 —— 自动档只许写文档，代码永远只报告`)
         }
       }
