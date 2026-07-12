@@ -116,6 +116,24 @@ frontend/anti-over-abstraction src/components/Wrapper.tsx
 
 只处理【自动】组。
 
+### 执行顺序
+
+**【自动】组不是任意顺序，按下面这条可判定的规则排：**
+
+> **会往 `docs/` 新建文件的块先跑；只在既有文件之间搬内容的块后跑。**
+
+判据：看每个块 `Remediation` 的 `作用域` 是否含 `docs/`。含 `docs/` 的先跑。
+
+当前的排序结果：`legacy/memory-bloat`（作用域含 `docs/`）→ `legacy/doc-index-rot`（作用域是 `docs/`）→ `legacy/doc-fork`（作用域只有 `AGENTS.md, CLAUDE.md`）。
+
+**顺序不是可有可无的。**`legacy/doc-fork` 会把 `CLAUDE.md` 的每一章整章追加进 `AGENTS.md`。若它先跑，一份 682 行、含 ASCII 架构图与 125 行表格的 `CLAUDE.md` 会被整个塞进 `AGENTS.md`，得到一个 811 行的约束文件——然后 `legacy/memory-bloat` 再把它们拆出去。内容不会丢，但绕了一大圈，且中间态会触发行数预算。
+
+正确顺序下：`memory-bloat` 先把 10 个非规则章节搬进 `docs/`，`CLAUDE.md` 从 682 行降到 108 行；`doc-fork` 再追加剩下的 ~70 行规则。`AGENTS.md` 129 → 205 行，仍低于 300（实测，真实老项目）。
+
+**`legacy/doc-fork` 的 `Do Not Apply When` 里写死了一条兜底：`CLAUDE.md` 超过 300 行时它不适用。**万一顺序被打乱，它会自己拒绝执行，而不是把一份膨胀的文档塞进 `AGENTS.md`。
+
+### 串行与提交
+
 **【自动】组内的规则块必须串行执行，一次一个。**每个块执行完、其 `Verification` 通过后**立即提交**，再开始下一块。
 
 不要批量改完再一起提交 —— 因为规则块之间的作用域会重叠。当前的两个自动档块就重叠：`legacy/memory-bloat` 的作用域是 `AGENTS.md, CLAUDE.md, docs/`，`legacy/doc-index-rot` 的是 `docs/`，**两个都写 `docs/`**。
