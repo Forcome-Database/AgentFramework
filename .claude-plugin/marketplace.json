@@ -4,14 +4,14 @@
     "name": "Leo Xia"
   },
   "metadata": {
-    "description": "可移植的 agent 自动化开发框架",
+    "description": "可移植的 agent 自动化开发框架：为新项目立宪法，为老项目清算历史",
     "version": "0.1.0"
   },
   "plugins": [
     {
       "name": "agent-framework",
       "source": "./",
-      "description": "扫描项目真实技术栈，组装专属 AGENTS.md。26 个带适用条件的规则块，五道自检门。",
+      "description": "扫描项目真实技术栈，组装专属 AGENTS.md；再扫描存量文档与结构腐烂，自动整理机械可做的，报告需要判断的。31 个带适用条件的规则块，默认排除。",
       "category": "Productivity"
     }
   ]

@@ -15,7 +15,7 @@
 ### Claude Code 插件（推荐）
 
 ```
-/plugin marketplace add <owner>/agent-framework
+/plugin marketplace add Forcome-Database/AgentFramework
 /plugin install agent-framework@agent-framework
 ```
 
@@ -33,7 +33,7 @@
 
 `INIT.md` 是纯 Markdown 执行手册，不依赖任何工具特性。对 Cursor、Gemini CLI 或任何能读文件的 agent 说：
 
-> 读 `https://raw.githubusercontent.com/<owner>/agent-framework/main/INIT.md` 并执行。
+> 读 `https://raw.githubusercontent.com/Forcome-Database/AgentFramework/main/INIT.md` 并执行。
 
 它会告诉 agent 去哪里取规则块。代价是每次运行都要联网，且没有版本锁定。
 
@@ -108,9 +108,7 @@
 
 ### 两个可逆性档位
 
-扫到之后做什么，由 `Remediation` 的 `可逆性` 决定：
-
-分界线不是「文档 vs 代码」，是**「机械 vs 语义」**：
+扫到之后做什么，由 `Remediation` 的 `可逆性` 决定。分界线不是「文档 vs 代码」，是**「机械 vs 语义」**：
 
 > **自动档只做机械的、内容保全的、不需要理解内容含义的动作。**
 
@@ -149,7 +147,11 @@
 
 ### 六个阶段与不倒退门
 
-扫描手册 `REFACTOR.md` 是六个阶段：**前置**（`AGENTS.md` 必须存在、工作区必须干净）、**确定扫描集**、**扫描**（禁止任何写操作）、**分级呈现**、**执行【自动】组**、**自检**、**报告与沉淀**。
+扫描手册 `REFACTOR.md` 的结构与 `INIT.md` 同构：一个不计数的**阶段 0（前置）**，加**六个阶段**。
+
+阶段 0 是两道硬闸门：`AGENTS.md` 必须存在（不存在就让你先跑 `init-agents`），工作区必须干净（否则无法区分「框架改的」和「你没提交的」）。
+
+六个阶段：**确定扫描集** → **扫描**（禁止任何写操作）→ **分级呈现** → **执行【自动】组** → **自检** → **报告与沉淀**。
 
 阶段 5「自检」是**五道门**：路径存在门、占位符门、溯源门、互斥门，加一道**不倒退门**——它**不要求** `node scripts/check-docs.mjs` 返回 0，只要求它不比阶段 2 记录的基线**多出新的错误类型**。
 
