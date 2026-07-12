@@ -28,7 +28,19 @@ GENERATION_ONLY
 
 ## Verification
 - 命令：`test "$(wc -l < <超行文件>)" -le 300`。**必须查 `<超行文件>`，不要写死 `AGENTS.md`** —— 因为膨胀的通常是 `CLAUDE.md`（真实案例 682 行），此时查一个 4 行的 `AGENTS.md` 恒真，本块会「验证通过」并提交一次什么都没干的改动。
-- 命令：搬迁后逐章 `diff` 比对，原文必须逐字节一致。
+- 命令：**内容保全核对**。工作区在本块动手前是干净的，所以 `git show HEAD:<超行文件>` 就是搬迁前的原文。搬完跑下面这段，应无输出：
+
+  ```bash
+  git show HEAD:<超行文件> \
+    | grep -vE '^[[:space:]]*(#|$)' \
+    | while IFS= read -r line; do
+        grep -rFqx -- "$line" <超行文件> docs/ 2>/dev/null || echo "丢失：$line"
+      done
+  ```
+
+  不要只用「逐章 `diff` 比对」 —— 因为 `diff` 只能比对你**自以为**搬了的那些章，漏搬一整章它发现不了。上面这条核对拿原文的每一行去搜，漏了哪一行就报哪一行。它与 `legacy/doc-fork` 用的是同一条核对，只是搜索范围加上了 `<超行文件>` 自己（未被搬走的章节仍留在原地）。
+
+  `-x`、`--`、跳过标题行的理由，与 `legacy/doc-fork` 的 `Verification` 相同。
 - 自查：`<超行文件>` 中每个被搬走的章节，是否都留下了指向 `docs/` 下对应文件的一行指针？
 
 ## Legacy Scan

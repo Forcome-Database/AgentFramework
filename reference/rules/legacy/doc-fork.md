@@ -25,10 +25,23 @@ GENERATION_ONLY
 ## Verification
 - 命令：`test "$(grep -c . CLAUDE.md)" -eq 1`，人工合并完成后应通过。
 - 命令：`grep -q '^@AGENTS.md$' CLAUDE.md`，人工合并完成后应通过。
-- 命令：内容保全核对，供人工合并后自查。`git show HEAD:CLAUDE.md | grep -E '^[[:space:]]*[-*0-9]' | while IFS= read -r line; do grep -Fqx -- "$line" AGENTS.md || echo "丢失：$line"; done` 应无输出。
+- 命令：**内容保全核对**，供人工合并后自查。合并前工作区必须干净，`git show HEAD:CLAUDE.md` 即原文。应无输出：
+
+  ```bash
+  git show HEAD:CLAUDE.md \
+    | grep -vE '^[[:space:]]*(#|$)' \
+    | while IFS= read -r line; do
+        grep -rFqx -- "$line" AGENTS.md docs/ 2>/dev/null || echo "丢失：$line"
+      done
+  ```
+
+  - **覆盖全部非标题、非空行**，不只是条目行 —— 因为代码块、表格、散文段落也是内容，丢了同样是数据损失（证据：一个真实老项目的 `CLAUDE.md` 共 682 行，其中 328 行是条目、69 行是标题、96 行是空行，**待核对的是 517 行**。只查条目行的旧版本对其中 189 行——占全文 28%的架构图、表格与代码块——完全失明，会给出一份「核对通过」的静默数据损失）。
+  - **搜索范围是 `AGENTS.md` 加 `docs/`，不只是 `AGENTS.md`** —— 因为「内容保全」的语义是「没有任何一行被删掉」，不是「全部进了 `AGENTS.md`」。架构图、配置表、踩坑日志的正确去处是 `docs/`，不是约束文件。只查 `AGENTS.md` 会把一次**正确**的搬迁报成丢失。
+  - 跳过标题行 —— 因为 `# CLAUDE.md` 这个标题按定义不可能出现在 `AGENTS.md` 里（那里叫 `# AGENTS.md`），全行核对会让每一次完美的合并都被判为丢失。
   - `-x` 不能省 —— 因为 `grep -Fq` 是子串匹配，一条被追加了例外的规则含有原文子串，子串匹配会判它通过而语义已经反转（证据：`- 多命中凭证一律交人工复核。` 被改成 `- 多命中凭证一律交人工复核。除非置信度大于 0.9，此时自动消歧。`，`grep -Fq` 零输出判定通过；这正是 `reference/anti-patterns.md` 第 1 条那个财务项目的原始案例）。
   - `--` 不能省 —— 因为条目行以 `-` 开头，grep 会把它当选项并报 `unknown option`，整个判定静默失效（证据：`docs/pitfalls.md` 第 4 条）。
-  - **这条核对只覆盖条目行，对代码块、表格、散文完全失明。**它是人工合并的辅助，不是充分条件。
+
+  实测（真实老项目，682 行 `CLAUDE.md`）：先按二级标题把 10 个非规则章节搬进 `docs/`，再把剩下的铁律与维护规范并入 `AGENTS.md`，`CLAUDE.md` 收敛为单行 —— 517 行待核对，**只报 2 行丢失**，且确是被搬迁脚本漏掉的文件前言。反向测试：删掉一条铁律，立刻被抓出；删掉 `docs/` 下一整章，丢失数从 2 跳到 128。
 
 ## Legacy Scan
 - 命令：`grep -c . CLAUDE.md`，大于 1 即命中。
