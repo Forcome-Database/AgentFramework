@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { checkTransclusion, checkLineBudget, checkDeadLinks, runChecks } from '../scripts/check-docs.mjs'
+import { checkTransclusion, checkLineBudget, checkDeadLinks, checkIndexCoverage, runChecks } from '../scripts/check-docs.mjs'
 
 function tmpProject (files) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'chkdocs-'))
@@ -79,4 +79,55 @@ test('缺少 CLAUDE.md 被检出', () => {
   const errors = runChecks(dir)
   assert.equal(errors.length, 1)
   assert.match(errors[0], /CLAUDE\.md 不存在/)
+})
+
+// ---------- 分项检查：一个规则块只能验它作用域内的东西 ----------
+
+test('checkIndexCoverage 抓出未被 docs/index.md 收录的文档', () => {
+  const dir = tmpProject({
+    'docs/index.md': '# 索引\n\n- [a](a.md)\n',
+    'docs/a.md': '# A\n',
+    'docs/b.md': '# B\n'
+  })
+  const errors = checkIndexCoverage(dir)
+  assert.equal(errors.length, 1)
+  assert.match(errors[0], /b\.md/)
+  assert.match(errors[0], /未收录/)
+})
+
+test('checkIndexCoverage 全部收录时通过', () => {
+  const dir = tmpProject({
+    'docs/index.md': '# 索引\n\n- [a](a.md)\n- [b](b.md)\n',
+    'docs/a.md': '# A\n',
+    'docs/b.md': '# B\n'
+  })
+  assert.deepEqual(checkIndexCoverage(dir), [])
+})
+
+test('runChecks 的 only 参数只跑指定的那一项', () => {
+  // CLAUDE.md 是多行（transclusion 错），但索引是完整的
+  const dir = tmpProject({
+    'AGENTS.md': '# A\n',
+    'CLAUDE.md': '# CLAUDE\n\n很多内容。\n',
+    'docs/index.md': '# 索引\n\n- [a](a.md)\n',
+    'docs/a.md': '# A\n'
+  })
+  // 全量：会因为 transclusion 报错
+  assert.ok(runChecks(dir).some((e) => /transclusion/.test(e)))
+  // 只跑 doc-index：transclusion 的错不该出现
+  const scoped = runChecks(dir, { only: ['doc-index'] })
+  assert.deepEqual(scoped, [], '索引完整时，doc-index 分项应零错误 —— 别的块的病不该让它失败')
+})
+
+test('runChecks 的 only=doc-index 仍能抓出索引自己的问题', () => {
+  const dir = tmpProject({
+    'AGENTS.md': '# A\n',
+    'CLAUDE.md': '@AGENTS.md\n',
+    'docs/index.md': '# 索引\n\n- [a](a.md)\n- [死链](nope.md)\n',
+    'docs/a.md': '# A\n',
+    'docs/b.md': '# B\n'
+  })
+  const errors = runChecks(dir, { only: ['doc-index'] })
+  assert.ok(errors.some((e) => /死链|nope/.test(e)), '索引里的死链要抓')
+  assert.ok(errors.some((e) => /b\.md/.test(e)), '未收录的文档要抓')
 })

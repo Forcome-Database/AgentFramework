@@ -270,3 +270,50 @@ git check-ignore -q "${path%/}"
 | `frontend/.next/` | 是 | 豁免 | 豁免 ✓ |
 
 **教训。** 这个 bug 是**为了修一个误报而引入的**——`.env` 的假死链是真问题，但补丁的副作用是把整道门废了。**一道门加豁免条件时，必须问：这个豁免会不会把门本身豁免掉？**而验证它的唯一办法是：**喂给它一个本该被抓住的东西，确认它还抓得住。**只测「`.env` 现在不误报了」是不够的——那只验证了豁免生效，没验证门还活着。
+
+## 11. 规则块的 `Verification` 依赖全局检查脚本，被别的块的病卡死
+
+**现象。** 在一个真实老项目上跑 `refactor-legacy`，执行 agent 停在阶段 3，一个文件都没动，报告：
+
+> `legacy/doc-index-rot` 被 `CLAUDE.md` 的 transclusion 错误触发，但该错误只能由后续 `legacy/doc-fork` 修复。按 `REFACTOR.md` 规定的顺序，`doc-index-rot` 无法通过自身验证。
+
+**它是对的。**该项目的 `docs/index.md` 已经收录了全部 95 篇文档、零死链——`doc-index-rot` 根本没活干。
+
+**根因。** `doc-index-rot` 的 `Applies When` 与 `Verification` 都写的是 `node scripts/check-docs.mjs` 的返回码。而那个脚本断言的是**全局不变量**：
+
+```
+AGENTS.md ≤ 300 行
+CLAUDE.md 恰为单行 @AGENTS.md      ← 这一条把它卡死了
+无死链
+```
+
+于是：
+
+- `doc-index-rot` 被一个**不属于它作用域**的错误（`CLAUDE.md` 682 行）触发
+- 又被**同一个错误**判定为失败
+- 而那个错误归 `legacy/doc-fork` 管，且它排在后面
+
+**这是同一个死锁的第二次出现。**第一次在 `REFACTOR.md` 阶段 5：「`check-docs.mjs` 必须返回 0」被改成了「不倒退门」。**我在阶段层面修了，在规则块层面没修。**
+
+**修复。** 给 `check-docs.mjs` 加分项检查，让每个块只跑它作用域内的那一项：
+
+```bash
+node scripts/check-docs.mjs <root> --only=doc-index     # 只查索引完整性与死链
+node scripts/check-docs.mjs <root> --only=transclusion  # 只查 CLAUDE.md 单行
+node scripts/check-docs.mjs <root> --only=line-budget   # 只查 AGENTS.md 行数
+```
+
+同时补上 `checkIndexCoverage`——「索引是否收录了全部文档」这个检查原本根本不存在，执行 agent 只好自己写 PowerShell 去数。
+
+**验证。** 在那个真实项目上：
+
+```
+node scripts/check-docs.mjs <root>                  → ✗ CLAUDE.md 应恰为一行（586 行非空）
+node scripts/check-docs.mjs <root> --only=doc-index → ✓ 通过
+```
+
+死锁解开：`doc-index-rot` 现在被正确排除（索引已完整），而不是被一个不属于它的错误触发再卡死。
+
+**教训。** 写完一条 `Verification` 问一句：**这条命令报错时，本块修得了吗？**修不了，就说明它超出了本块的作用域。
+
+一个块只对自己的作用域负责。让它跑全量检查，别的块的病会让它永远过不了自己的门。

@@ -44,28 +44,76 @@ export function checkDeadLinks (content, root, sourceFile) {
   return errors
 }
 
-export function runChecks (root) {
+// docs/ 下的每一篇 .md（index.md 自己除外）都必须能从 docs/index.md 一跳到达。
+export function checkIndexCoverage (root) {
+  const docsDir = path.join(root, 'docs')
+  if (!fs.existsSync(docsDir)) return []
+  const indexPath = path.join(docsDir, 'index.md')
+  if (!fs.existsSync(indexPath)) return ['docs/index.md 不存在']
+
+  const index = fs.readFileSync(indexPath, 'utf8')
+  const linked = new Set()
+  for (const m of index.matchAll(LINK_RE)) {
+    const t = m[1].trim().split('#')[0]
+    if (!t || /^(https?:|mailto:)/.test(t) || t.startsWith('/')) continue
+    linked.add(path.resolve(docsDir, t))
+  }
+
   const errors = []
-  const agentsPath = path.join(root, 'AGENTS.md')
-  const claudePath = path.join(root, 'CLAUDE.md')
-
-  if (!fs.existsSync(agentsPath)) {
-    errors.push('AGENTS.md 不存在')
-  } else {
-    const agents = fs.readFileSync(agentsPath, 'utf8')
-    errors.push(...checkLineBudget(agents))
-    errors.push(...checkDeadLinks(agents, root, 'AGENTS.md'))
+  const walk = (dir) => {
+    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+      const abs = path.join(dir, e.name)
+      if (e.isDirectory()) { walk(abs); continue }
+      if (!e.name.endsWith('.md')) continue
+      if (abs === indexPath) continue
+      if (!linked.has(abs)) {
+        errors.push(`docs/index.md 未收录 ${path.relative(root, abs).split(path.sep).join('/')}`)
+      }
+    }
   }
+  walk(docsDir)
+  return errors
+}
 
-  if (!fs.existsSync(claudePath)) {
-    errors.push('CLAUDE.md 不存在。它应为单行 @AGENTS.md。')
-  } else {
-    errors.push(...checkTransclusion(fs.readFileSync(claudePath, 'utf8')))
+// 四个分项。一个规则块只该跑它作用域内的那一项 ——
+// 因为 check-docs.mjs 断言的是**全局**不变量，而一个块只对自己的作用域负责。
+// 让它跑全量，别的块的病会让它永远过不了自己的 Verification（见 docs/pitfalls.md 第 11 条）。
+const CHECKS = {
+  'line-budget': (root) => {
+    const p = path.join(root, 'AGENTS.md')
+    return fs.existsSync(p) ? checkLineBudget(fs.readFileSync(p, 'utf8')) : ['AGENTS.md 不存在']
+  },
+  transclusion: (root) => {
+    const p = path.join(root, 'CLAUDE.md')
+    return fs.existsSync(p) ? checkTransclusion(fs.readFileSync(p, 'utf8')) : ['CLAUDE.md 不存在。它应为单行 @AGENTS.md。']
+  },
+  'dead-links': (root) => {
+    const errors = []
+    const a = path.join(root, 'AGENTS.md')
+    if (fs.existsSync(a)) errors.push(...checkDeadLinks(fs.readFileSync(a, 'utf8'), root, 'AGENTS.md'))
+    const i = path.join(root, 'docs', 'index.md')
+    if (fs.existsSync(i)) errors.push(...checkDeadLinks(fs.readFileSync(i, 'utf8'), path.join(root, 'docs'), 'docs/index.md'))
+    return errors
+  },
+  // legacy/doc-index-rot 与 docs/ai-doc-index 的作用域：索引的完整性与死链。
+  // 不含 CLAUDE.md transclusion、不含 AGENTS.md 行数预算 —— 那些不归它们管。
+  'doc-index': (root) => {
+    const errors = [...checkIndexCoverage(root)]
+    const i = path.join(root, 'docs', 'index.md')
+    if (fs.existsSync(i)) errors.push(...checkDeadLinks(fs.readFileSync(i, 'utf8'), path.join(root, 'docs'), 'docs/index.md'))
+    return errors
   }
+}
 
-  const indexPath = path.join(root, 'docs', 'index.md')
-  if (fs.existsSync(indexPath)) {
-    errors.push(...checkDeadLinks(fs.readFileSync(indexPath, 'utf8'), path.join(root, 'docs'), 'docs/index.md'))
+export const CHECK_NAMES = Object.keys(CHECKS)
+
+export function runChecks (root, { only } = {}) {
+  const names = only ?? ['line-budget', 'transclusion', 'dead-links']
+  const errors = []
+  for (const n of names) {
+    const fn = CHECKS[n]
+    if (!fn) throw new Error(`未知的检查项：${n}。可选：${CHECK_NAMES.join(', ')}`)
+    errors.push(...fn(root))
   }
   return errors
 }
@@ -76,11 +124,21 @@ const invokedDirectly = process.argv[1] &&
   path.resolve(process.argv[1]) === path.resolve(fileURLToPath(import.meta.url))
 
 if (invokedDirectly) {
-  const root = process.argv[2] || process.cwd()
-  const errors = runChecks(root)
+  const args = process.argv.slice(2)
+  const onlyArg = args.find((a) => a.startsWith('--only='))
+  const root = args.find((a) => !a.startsWith('--')) || process.cwd()
+  const only = onlyArg ? onlyArg.slice('--only='.length).split(',') : undefined
+
+  let errors
+  try {
+    errors = runChecks(root, { only })
+  } catch (e) {
+    console.error(`✗ ${e.message}`)
+    process.exit(2)
+  }
   if (errors.length) {
     for (const e of errors) console.error(`✗ ${e}`)
     process.exit(1)
   }
-  console.log('✓ 文档健康检查通过')
+  console.log(only ? `✓ 分项检查通过：${only.join(', ')}` : '✓ 文档健康检查通过')
 }

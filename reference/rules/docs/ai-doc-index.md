@@ -21,4 +21,6 @@ exclusive-with: null
 
 ## Verification
 - 自查：新增文档后，`docs/index.md` 是否已补上对应条目？
-- 命令：`node scripts/check-docs.mjs` 返回 0，确认索引中无死链。
+- 命令：`node scripts/check-docs.mjs . --only=doc-index` 返回 0，确认索引收录了全部文档且无死链。
+
+  用 `--only=doc-index` 而不是全量 —— 因为全量还会断言 `CLAUDE.md` 恰为单行、`AGENTS.md` ≤ 300 行，那些不归本条管。一条规则的 `Verification` 只能检查它自己作用域内的东西（证据：`docs/pitfalls.md` 第 11 条）。
