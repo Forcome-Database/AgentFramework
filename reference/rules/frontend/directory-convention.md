@@ -5,7 +5,14 @@ exclusive-with: null
 ---
 
 ## Applies When
-- 项目存在 `pages/`、`views/` 或 `routes/` 目录。
+- `package.json` 依赖中存在 `react`、`vue` 或 `svelte` 之一。
+- 项目存在路由目录。四种形态任一即可，用下面这条命令一次扫出（`-maxdepth 3` 是为了在 monorepo 里也能命中 `frontend/app/` 这样的子包路径）：
+
+  ```bash
+  find . -maxdepth 3 -not -path "*/node_modules/*"     \( -type d \( -name pages -o -name views -o -name routes \)        -o -name layout.tsx -o -name layout.jsx \)
+  ```
+
+  `layout.tsx` 是 **Next.js App Router 的必需文件**，用它而不是目录名 `app/` 作判据 —— 因为 `app/` 在 Rails 与许多 Python 项目里也是标准目录名，只看目录名会把后端项目误选进来。
 
 ## Do Not Apply When
 - 项目是组件库或工具库，无路由页面。

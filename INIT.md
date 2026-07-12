@@ -36,17 +36,24 @@
 5. git 是否已初始化；`git tag -l` 是否为空。
 6. `VERSION`、`CHANGELOG.md` 是否存在。
 7. 是否存在 `containers/`、`packages/`、`apps/` 等结构性目录。
-8. 是否存在空目录。用 `find . -type d -empty -not -path "./.git/*"`。空目录可能是被放弃的抽象层，留到阶段 7 报告。
+8. 是否存在空目录。空目录可能是被放弃的抽象层，留到阶段 7 报告。
+
+   ```bash
+   find . -type d -empty      -not -path "*/.git/*" -not -path "*/node_modules/*"      -not -path "*/.next/*" -not -path "*/.swc/*" -not -path "*/.venv/*"
+   ```
+
+   **prune 模式必须用 `*/` 前缀，不能用 `./`。**`-not -path "./node_modules/*"` 只排除**顶层**的那一个；monorepo 里 `frontend/node_modules/`、嵌套的 `.git/`、`frontend/.next/` 全部漏网（证据：在一个真实 monorepo 上，`./` 写法报出 14 个空目录，其中 8 个是嵌套的依赖与构建产物目录；`*/` 写法报出 6 个，全部是真实信号）。
 9. 是否存在 `.husky/` 或 `.pre-commit-config.yaml`。
 
 退出条件：产出一份事实清单，每条附带证据路径。
 
 ## 阶段 2：判定
 
-遍历 `reference/rules/` 下全部规则块。
+遍历 `reference/rules/` 下的规则块。
 
 对每一块：
 
+- **若 `category` 为 `legacy`，跳过。**它们是重构模式的腐烂探针，属于 `REFACTOR.md` 的扫描集，不参与生成。它们的 `Remediation` 字段会真的改文件，而本手册不读那个字段 —— 在判定表里显示「选入」是一个危险的假象（证据：在一个真实项目上验收时，`legacy/memory-bloat` 出现在生成阶段的判定表里并标着「选入」，而它有一个会搬移 `CLAUDE.md` 整个章节的动作）。
 - 若 frontmatter 的 `exclusive-with` 非 `null`，跳过。互斥对留到阶段 3。
 - 否则，逐条比对 `Applies When` 与 `Do Not Apply When`。
 
@@ -58,7 +65,9 @@
 
 产出判定表，每行三列：规则块 id、判定、依据。依据必须引用阶段 1 的具体证据，例如「`package.json` 含 `react`；存在 `src/pages/`」。
 
-退出条件：判定表覆盖全部非互斥规则块，每行都有依据。
+退出条件：判定表覆盖全部**非 `legacy`、非互斥**的规则块，每行都有依据。
+
+规则库共 31 个块：26 个参与生成（本阶段判定），5 个 `legacy/` 块只参与重构扫描（`REFACTOR.md` 阶段 1）。**判定表里不该出现任何 `legacy/` 开头的 id。**
 
 ## 阶段 3：提问
 
