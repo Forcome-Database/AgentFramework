@@ -98,3 +98,24 @@ test('legacy 块排除条件不足两条被拒绝', () => {
   assert.match(errors[0], /legacy\/d\.md/)
   assert.match(errors[0], /Do Not Apply When/)
 })
+
+test('空的 Legacy Scan 标题被拒绝', () => {
+  const errors = runValidation(fixture('invalid-empty-legacy-scan'))
+  assert.equal(errors.length, 1)
+  assert.match(errors[0], /legacy\/e\.md/)
+  assert.match(errors[0], /Legacy Scan/)
+})
+
+test('自动档缺失作用域被拒绝', () => {
+  const errors = runValidation(fixture('invalid-auto-scope-missing'))
+  assert.equal(errors.length, 1)
+  assert.match(errors[0], /legacy\/f\.md/)
+  assert.match(errors[0], /作用域/)
+})
+
+test('报告档声明作用域被拒绝', () => {
+  const errors = runValidation(fixture('invalid-report-declares-scope'))
+  assert.equal(errors.length, 1)
+  assert.match(errors[0], /legacy\/g\.md/)
+  assert.match(errors[0], /作用域/)
+})

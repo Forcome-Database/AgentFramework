@@ -100,7 +100,9 @@ export function validateExclusivePairs (blocks) {
 
 // 可逆性为「自动」的块只许写文档。约束的是「写」的范围，不是「扫」的范围：
 // Legacy Scan 按定义只读（REFACTOR.md 阶段 2 禁止写操作），扫什么无关安全。
-const DOC_SCOPE = /^(docs\/|AGENTS\.md$|CLAUDE\.md$|CHANGELOG\.md$|\*\.md$)/
+// 自动档只许写文档：任意 .md 文件，或 docs/ 下的任何文件。
+// AGENTS.md / CLAUDE.md / CHANGELOG.md 都被 \.md$ 涵盖，不必单列。
+const DOC_SCOPE = /^docs\/|\.md$/
 
 export function validateRemediation (block) {
   const errors = []
@@ -108,7 +110,7 @@ export function validateRemediation (block) {
   const scan = block.sections['Legacy Scan']
   const rem = block.sections.Remediation
 
-  if (rem && !scan) {
+  if (rem && (!scan || scan.length === 0)) {
     errors.push(`${relPath}: 有 Remediation 却无 Legacy Scan —— 无扫描依据的整理动作无从触发`)
   }
 
