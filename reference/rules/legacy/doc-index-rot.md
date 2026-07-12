@@ -1,0 +1,35 @@
+---
+id: legacy/doc-index-rot
+category: legacy
+exclusive-with: null
+---
+
+## Applies When
+- `docs/` 下的 Markdown 文档数超过 3 篇。
+- 不存在 `docs/index.md`，或 `node scripts/check-docs.mjs` 返回非零。
+
+## Do Not Apply When
+- 项目使用文档站，索引由文档站自身的侧边栏配置生成，即存在 `docs/.vitepress/`、`docusaurus.config.*` 或 `source.config.ts` 之一。
+- `docs/` 下的文档全部由本框架的状态机模板生成且从未被追加，即 `docs/` 中只有 `progress/` 与 `overview/` 两个子目录。
+- 报出的死链指向的是文档站路由而非文件系统路径，例如 `/docs/overview/quick-start` —— 这不是死链，是 `check-docs.mjs` 的已知假阳性（证据：`docs/pitfalls.md` 第 3 条，某 fumadocs 项目上报出 19 个假死链）。
+
+## Output Target
+GENERATION_ONLY
+
+## Rule
+- 文档数超过 3 篇时必须有 `docs/index.md` —— 因为没有索引的文档目录，agent 只能靠文件名猜内容，猜错的成本是读完整篇。
+- 新增文档必须在同一次改动中补索引条目 —— 因为分两次提交时，第二次必然被遗忘。
+- 不要在索引中写文档站的路由路径 —— 因为 `check-docs.mjs` 按文件系统路径校验，路由路径会被判为死链（证据：某 fumadocs 项目上报出 19 个假死链）。
+
+## Verification
+- 命令：`node scripts/check-docs.mjs` 返回 0。
+- 自查：`docs/` 下每一篇文档，是否都能从 `docs/index.md` 一跳到达？
+
+## Legacy Scan
+- 命令：`find docs -name "*.md" | wc -l`，超过 3 且 `test -e docs/index.md` 失败即命中。
+- 命令：`node scripts/check-docs.mjs`，返回非零即命中，其输出即死链清单。
+
+## Remediation
+- 可逆性：自动
+- 作用域：docs/
+- 动作：生成或补全 `docs/index.md`，为每篇未收录的文档加一行条目。修正指向真实存在文件的死链。指向文档站路由的链接不动。
