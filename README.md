@@ -27,7 +27,22 @@
 
 ### Codex
 
-同一个仓库带 `.codex-plugin/plugin.json`，可直接作为 Codex 插件安装。
+**在 shell 里跑，不是在 Codex 的 TUI 里。**Codex 没有 `/plugin` 这个 slash 命令——它的插件安装是一条 CLI 子命令：
+
+```bash
+codex plugin marketplace add Forcome-Database/AgentFramework
+```
+
+然后在 Codex 里 `/plugins` 打开插件浏览器，找到 `agent-framework` 装上。**装完要开一个新 session**，插件带的 skill 才会被加载。
+
+调用时用 `@`，不是 `/`：
+
+```
+@init-agents
+@refactor-legacy
+```
+
+仓库同时带两份 marketplace 清单：`.agents/plugins/marketplace.json`（Codex 的当前标准路径）与 `.claude-plugin/marketplace.json`（Claude Code 用，也是 Codex 的 legacy 路径）。两者的 `source` 字段格式不同——Claude Code 用字符串 `"./"`，Codex 要对象 `{"source": "local", "path": "./"}`——所以不能只留一份。
 
 ### 任意 AI，零安装
 
