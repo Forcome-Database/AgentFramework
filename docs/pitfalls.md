@@ -237,16 +237,27 @@ git check-ignore -q "nonexistent/dir/"    → 0
 git check-ignore -q "web/src/stores/"     → 0
 ```
 
-**根因。** 带尾部斜杠时，`git check-ignore -v` 报告匹配到了 `.gitignore` 的一个**空行**：
+**根因（第一版诊断是错的，这是实测二分出来的）。** 触发条件是 **`.gitignore` 用 CRLF 行尾，且含至少一个空行**：
 
 ```
-$ git check-ignore -v "foo/bar/"
-.gitignore:27:	foo/bar/          ← 第 27 行是空行，pattern 字段为空
+LF   + 空行  →  正常
+CRLF + 空行  →  陷阱在   ← 任何带尾斜杠的路径都被判为「已忽略」
+```
+
+CRLF 的「空行」是一个孤零零的 ``。**对 git 来说那不是空行，是一个模式。**于是：
+
+```
+$ git check-ignore -v "src/api/"     # 带尾斜杠 → git 当成目录
+.gitignore:2:	src/api/              ← 匹配到那个只含  的「空行」
 exit 0
 
-$ git check-ignore -v "foo/bar"    ← 剥掉斜杠
-exit 1                              ← 正确
+$ git check-ignore -v "src/api"      # 剥掉斜杠
+exit 1                                ← 正确
 ```
+
+**在 Linux/Mac（LF 行尾）上这个陷阱根本不存在。**它只在 Windows 仓库里出现 —— 而这个框架的目标用户里有 Windows。
+
+第一版诊断写的是「匹配到一个空行」，漏掉了 CRLF 这个必要条件。**一条写错的踩坑记录比没有更糟**，因为它会把后来者引向错误的方向。这一条是靠把真实项目的 `.gitignore` 逐行二分才定位到的。
 
 而 `AGENTS.md` 里的目录路径**全都带尾部斜杠**（`src/services/api/`、`backend/app/services/`）。
 
@@ -268,6 +279,8 @@ git check-ignore -q "${path%/}"
 | `src/services/api/` | 否 | **豁免** ✗ | 抓住 ✓ |
 | `web/src/stores/` | 否 | **豁免** ✗ | 抓住 ✓ |
 | `frontend/.next/` | 是 | 豁免 | 豁免 ✓ |
+
+**这个陷阱现在被 `tests/fixtures/rotten-project/` 的 CRLF `.gitignore` 复现，并由 `tests/exercise-rules.test.mjs` 断言。**测试先断言陷阱**确实重现**（否则它就是在测一个不存在的东西），再断言剥斜杠的写法救得回来。
 
 **教训。** 这个 bug 是**为了修一个误报而引入的**——`.env` 的假死链是真问题，但补丁的副作用是把整道门废了。**一道门加豁免条件时，必须问：这个豁免会不会把门本身豁免掉？**而验证它的唯一办法是：**喂给它一个本该被抓住的东西，确认它还抓得住。**只测「`.env` 现在不误报了」是不够的——那只验证了豁免生效，没验证门还活着。
 

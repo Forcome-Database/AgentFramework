@@ -45,7 +45,12 @@
 
 ## 项目注意事项
 
-- 脚本零依赖，仅允许 `node:crypto`、`node:fs`、`node:path`、`node:url`、`node:test`、`node:assert/strict` 与全局 `fetch`。
+- `scripts/` 下的脚本零依赖，仅允许 `node:crypto`、`node:fs`、`node:path`、`node:url`、`node:test`、`node:assert/strict` 与全局 `fetch`。
+- `tests/` 与 `scripts/exercise-rules.mjs` 额外允许 `node:child_process` 与 `node:os` —— 因为规则块的 `Legacy Scan` 与 `Verification` 里装的是 shell 命令，不执行它们就无法测试它们。
+
+  **这条白名单一度禁掉了 `child_process`，结果是：框架有 54 个单元测试，测的全是 `scripts/`，一个都没测 `reference/rules/`。**规则块里那些命令是用 markdown 写的小程序，只有当 LLM 在真实项目上执行手册时才第一次运行 —— 所以每次真实运行都出新 bug，不是运气差，是必然（证据：`docs/pitfalls.md` 第 3、4、6、10、11 条，全部是规则块或手册里的命令在真实项目上才暴露的）。
+
+  这个框架的立身之本是「`Verification` 把规则从**主张**变成**可判定的检查**」。而这些 `Verification` 命令本身，就是一堆未经验证的主张。**一条阻止框架测试自己核心产物的规则，必须改。**
 - 判断脚本是否被直接调用时，必须用 `node:url` 的 `fileURLToPath` 解析 `import.meta.url` —— 因为 `new URL(...).pathname` 返回 percent-encoded 路径，仓库路径含非 ASCII 字符时比较必然失败且静默退出 0。
 - 占位符检查绝不扫描 `reference/`、`INIT.md` 与 `REFACTOR.md` —— 因为这些文件按定义含被禁词字面量，扫描必然自匹配。
 - 验收在真实项目的副本上进行。不要向被验收的仓库写入文件 —— 因为验收不得成为一次未经请求的改动。

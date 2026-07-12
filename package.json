@@ -7,6 +7,7 @@
     "test": "node --test",
     "validate": "node scripts/validate-rules.mjs",
     "check-docs": "node scripts/check-docs.mjs",
-    "check-consistency": "node scripts/check-consistency.mjs"
+    "check-consistency": "node scripts/check-consistency.mjs",
+    "exercise-rules": "node scripts/exercise-rules.mjs"
   }
 }
