@@ -6,6 +6,7 @@
   "scripts": {
     "test": "node --test",
     "validate": "node scripts/validate-rules.mjs",
-    "check-docs": "node scripts/check-docs.mjs"
+    "check-docs": "node scripts/check-docs.mjs",
+    "check-consistency": "node scripts/check-consistency.mjs"
   }
 }

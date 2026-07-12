@@ -22,6 +22,7 @@
 - 规则块的 `id` 只增不改。已发布的 `id` 被其它文件交叉引用，改名会造成断链。
 - 回流的规则块写进 git 工作副本，不要写进 `~/.claude/plugins/cache/` —— 因为插件缓存在插件更新时被整个替换，写进去的规则会无声消失。
 - 每次改动规则库后必须运行 `node scripts/validate-rules.mjs`，返回 0 方可提交。
+- 每次改动 README、两份手册、任一 plugin.json 或规则块后，必须运行 `node scripts/check-consistency.mjs`，返回 0 方可提交 —— 因为同一个事实散在多处（规则块数量在 5 个文件里，`legacy/` 档位在 4 个文件里），改一处忘另一处就是双文件分叉，而这在本框架的开发中发生过十次以上（见 `docs/pitfalls.md`）。
 
 ## 只读文件
 

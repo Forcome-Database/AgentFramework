@@ -188,28 +188,35 @@ codex plugin marketplace add Forcome-Database/AgentFramework
 
 ```markdown
 ---
-id: frontend/anti-over-abstraction
+id: frontend/design-token-consistency
 category: frontend
 exclusive-with: null
 ---
 
 ## Applies When
-- package.json 依赖中存在 react、vue 或 svelte 之一。
-- 项目是应用，存在 pages/、views/ 或 routes/ 目录。
+- 项目支持主题切换或暗色模式。特征包括 `dark:` 类名、`ConfigProvider` token、CSS 变量主题、`prefers-color-scheme` 查询。
 
 ## Do Not Apply When
-- 项目本身是组件库或设计系统，转发与包装组件是其交付物。
-- 项目明确采用容器与展示组件分离架构，存在 containers/ 目录。
+- 项目只有单一固定主题。
 
 ## Output Target
 `## 前端规范`
 
 ## Rule
-- 不要新增只做简单转发的组件，例如只 `return <X>{children}</X>` —— 因为它增加了一层无行为的间接，读者要多跳一次才能找到真实实现。
+- 颜色一律取自主题 token 或主题 store，其入口由初始化时写入 `## 项目注意事项`。
+- 不要硬编码具体颜色值或颜色类名 —— 因为它们不会随主题切换，会造成浅色与深色模式下的视觉断裂。
+- 新增按钮、弹窗、浮层时复用已有组件的视觉风格。
+- 主题相关配置集中在统一的主题文件或 Provider 中。
+- 不要在页面私有组件里自己写主题分支判断 —— 因为分支散落后，改一次主题要改几十处。
 
 ## Verification
-- 命令：`grep -rn "return <[A-Z][A-Za-z]*>{children}</" src/` 应无新增命中。
+- 命令：`grep -rnE "(bg|text|border)-(black|white|stone|slate|zinc)-[0-9]" src/` 应无新增命中。
+- 自查：本次新增的组件在深色模式下是否被实际查看过？
 ```
+
+**这段是 `reference/rules/frontend/design-token-consistency.md` 的逐字节原文**，由 `check-consistency.mjs` 的 `checkExampleBlocks` 强制——README 里凡是带 `id:` 的示例，必须与真实文件一致。
+
+这道检查不是多余的：写这一节时，我手打了一段"看起来像"这个规则块的内容并标注「这是真实内容」——`Applies When` 和 `Rule` 全是编的，读起来毫无破绽。**手写的示例绕过了这个框架的每一道门**（溯源门、路径存在门都只管生成物，不管 README）。
 
 **划分判据**：`Applies When`、`Do Not Apply When`、`Output Target` 三者完全相同的规则必须合入同一块。这条由 `validate-rules.mjs` 强制执行，不靠自觉——素材库越大，三元组空间越拥挤，想塞进一个语义重复的块就越难不撞车。
 
@@ -226,12 +233,17 @@ exclusive-with: null
 ## 校验
 
 ```bash
-npm test                        # 33 个单元测试
-node scripts/validate-rules.mjs # 规则库自检：五字段、三元组唯一、互斥双向、禁令三段式
-node scripts/check-docs.mjs     # 文档健康：transclusion、行数预算、死链
+npm test                            # 47 个单元测试
+node scripts/validate-rules.mjs     # 规则库自检：五字段、三元组唯一、互斥双向、禁令三段式
+node scripts/check-docs.mjs         # 文档健康：transclusion、行数预算、死链
+node scripts/check-consistency.mjs  # 跨文件事实：数量、档位、id 断链、占位符、prune 模式
 ```
 
-三个脚本零依赖，只用 Node 内置模块。
+四个脚本零依赖，只用 Node 内置模块。
+
+`check-consistency.mjs` 守的是**同一个事实散在多处**这件事：规则块数量写在 5 个文件里，`legacy/` 块的档位写在 4 个文件里。改一处忘另一处，就是 `anti-patterns.md` 第 1 条的「双文件内容分叉」—— 而 agent 会捡到过期的那份。
+
+**这个框架自己的开发中，同类分叉发生过十次以上。**它第一次干净运行就抓出一处真实的 prune bug。
 
 每个脚本都有一个「已知违规」的测试用例，断言它返回非零。**只测通过路径的检查形同虚设**——本框架的 `validate-rules.mjs` 初版因路径编码问题从不执行，退出码恒为 0，看起来一直在通过。详见 [`docs/pitfalls.md`](docs/pitfalls.md)。
 

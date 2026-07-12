@@ -31,4 +31,4 @@ exclusive-with: null
 ## Verification
 - 自查：本次改动是否读过被修改文件的现有实现？排障结论是否引用了真实日志或接口返回？
 - 命令：`git status --short` 不应出现与本次任务无关的文件。
-- 命令：`find . -type f -empty -not -path "./.git/*"` 应无新增命中。
+- 命令：`find . -type f -empty -not -path "*/.git/*" -not -path "*/node_modules/*"` 应无新增命中。prune 用 `*/` 前缀 —— 因为 `./` 只排除顶层的那一个，monorepo 里嵌套的 `.git/` 与 `node_modules/` 会漏网。
