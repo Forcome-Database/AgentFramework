@@ -5,9 +5,16 @@
 ## 规则库的证据与踩坑
 
 - [`evidence.md`](evidence.md) —— 规则从哪来：17 份真实约束文件与 8 个后端项目的调研结论，被推翻的四个假设，以及 `legacy/` 规则块各自对应 `anti-patterns.md` 的哪一条。
-- [`pitfalls.md`](pitfalls.md) —— 本仓库自己的踩坑记录，编号只增不重排。
+- [`pitfalls.md`](pitfalls.md) —— 本仓库自己的踩坑记录，编号只增不重排。第 7–9 条是**已知但未修复**的结构性缺陷，各带触发条件。
 
-## 重构模式的设计与实施
+## 重构模式的设计在哪
 
-- [`superpowers/specs/2026-07-12-refactor-mode-design.md`](superpowers/specs/2026-07-12-refactor-mode-design.md)（历史记录，已被真实项目验收推翻，勿据此写新规则块） —— 重构模式设计规格：为什么规则块的增量语义不够用，`Legacy Scan` / `Remediation` 两个可选字段怎么定义。
-- [`superpowers/plans/2026-07-12-refactor-mode.md`](superpowers/plans/2026-07-12-refactor-mode.md)（历史记录，已被真实项目验收推翻，勿据此写新规则块） —— 六个任务的实施计划与任务边界。
+没有单独的设计文档。设计以这三处为准：
+
+- [`../README.md`](../README.md) 的「重构模式」一节 —— 增量语义为什么不够用，「机械 vs 语义」这条线是怎么划出来的。
+- [`../REFACTOR.md`](../REFACTOR.md) —— 六阶段执行手册。
+- `../reference/rules/legacy/` —— 5 个规则块。每条规则的证据写在它自己的正文里。
+
+**不单独维护一份设计文档** —— 因为两份都含技术细节的文档必然分叉，而 agent 会捡到过期的那份（`reference/anti-patterns.md` 第 1 条）。
+
+这不是理论顾虑。本次开发确实产出过一份设计规格与一份实施计划，它们在真实项目验收后被推翻，只能挂上「勿据此写新规则块」的横幅——**那个横幅本身就是分叉的症状。**已移除。

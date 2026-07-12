@@ -1,2 +1,6 @@
 node_modules/
 .DS_Store
+
+# 开发过程的临时产物，不是框架的交付物
+.superpowers/
+docs/superpowers/
