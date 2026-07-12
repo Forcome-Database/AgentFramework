@@ -13,6 +13,9 @@
 - 框架根目录：**本文件（`REFACTOR.md`）所在的目录**。你是从某个绝对路径读到本文件的，那个目录就是框架根目录。不要去解 `${CLAUDE_PLUGIN_ROOT}` 之类的环境变量 —— 它是 Claude Code 专有的，Codex 与其它 agent 不认识它，解不出来就会去找一个不存在的路径。下文所有 `reference/`、`scripts/` 路径均相对于框架根目录。
 - 目标项目：要被整理的项目。下文凡未加「框架根目录」限定的相对路径，均相对于目标项目根目录。
 - 自动档 / 报告档：规则块 `Remediation` 字段中 `可逆性` 的两个取值。
+- 决策日志：目标项目的 `.agents/refactor-decisions.md`。**自动档每一个「没有逐字保留原文」的决定都必须写进它**——去重、改写、消解矛盾、判定某章是踩坑日志。它由各块的 `Verification` 中的「零静默丢失核对」机器强制：原文的每一行，要么逐字存在于某个文件，要么出现在这份日志里，两者都不满足即阻断。
+
+  **机器强制的不是「判断对不对」**（那需要另一个判断），**是「判断有没有被记录」**。一个没被记录的判断，等于没有判断：无从复核，也无从推翻。自动档可以做语义判断——模型做得到，就该让它做。
 
 ## 阶段 0：前置
 
@@ -124,11 +127,11 @@ frontend/anti-over-abstraction src/components/Wrapper.tsx
 
 判据：看每个块 `Remediation` 的 `作用域` 是否含 `docs/`。含 `docs/` 的先跑。
 
-当前的排序结果：`legacy/memory-bloat`（作用域含 `docs/`）→ `legacy/doc-index-rot`（作用域是 `docs/`）→ `legacy/doc-fork`（作用域只有 `AGENTS.md, CLAUDE.md`）。
+当前的排序结果：`legacy/memory-bloat`（作用域含 `docs/`）→ `legacy/doc-index-rot`（作用域是 `docs/`）→ `legacy/doc-fork`（作用域不含 `docs/`）。
 
-**顺序不是可有可无的。**`legacy/doc-fork` 会把 `CLAUDE.md` 的每一章整章追加进 `AGENTS.md`。若它先跑，一份 682 行、含 ASCII 架构图与 125 行表格的 `CLAUDE.md` 会被整个塞进 `AGENTS.md`，得到一个 811 行的约束文件——然后 `legacy/memory-bloat` 再把它们拆出去。内容不会丢，但绕了一大圈，且中间态会触发行数预算。
+**顺序不是可有可无的。**`legacy/doc-fork` 要逐条判断 `CLAUDE.md` 的内容：哪条与 `AGENTS.md` 重复、哪条该进哪一节、哪两条互相矛盾。若它先跑，就得在一份混着 ASCII 架构图、125 行表格与 379 行踩坑日志的 682 行文档里做这些判断 —— **判断质量必然差**，而且架构图和配置表根本不该进约束文件。
 
-正确顺序下：`memory-bloat` 先把 10 个非规则章节搬进 `docs/`，`CLAUDE.md` 从 682 行降到 108 行；`doc-fork` 再追加剩下的 ~70 行规则。`AGENTS.md` 129 → 205 行，仍低于 300（实测，真实老项目）。
+正确顺序下：`memory-bloat` 先逐章读内容、把 10 个非约束章节搬进 `docs/`，`CLAUDE.md` 从 682 行降到 108 行；`doc-fork` 再对剩下的 ~70 行**真正的约束**做合并判断。判断的输入干净了，判断才可能对。
 
 **`legacy/doc-fork` 的 `Do Not Apply When` 里写死了一条兜底：`CLAUDE.md` 超过 300 行时它不适用。**万一顺序被打乱，它会自己拒绝执行，而不是把一份膨胀的文档塞进 `AGENTS.md`。
 
@@ -238,9 +241,13 @@ frontend/anti-over-abstraction src/components/Wrapper.tsx
 
 1. 阶段 2 的完整偏离清单，含被 `Do Not Apply When` 排除的项及其排除依据。
 2. 阶段 4 的改动文件清单与 commit 列表。
-3. 【报告】组，每条附规则块 id 与证据位置。**原样交出，不代为决策。**
-4. 阶段 5 五道门的检查结果。
-5. 告知用户：不打算处理的【报告】组条目可写入 `.agents/refactor-ignore.txt`，下次扫描将跳过。
+3. **`.agents/refactor-decisions.md` 的全文。**这是【自动】组每一个「没有逐字保留原文」的决定 —— 去重、改写、消解矛盾、判定某章是踩坑日志。**这份日志才是用户真正要读的东西，不是几百行的 diff。**
+
+   自动档可以做语义判断（模型做得到），但机器强制它把每个判断记下来。机器强制的不是「判断对不对」（那需要另一个判断），而是「判断有没有被记录」—— 一个没被记录的判断，等于没有判断：无从复核，也无从推翻。
+
+4. 【报告】组，每条附规则块 id 与证据位置。**原样交出，不代为决策。**
+5. 阶段 5 五道门的检查结果。
+6. 告知用户：不打算处理的【报告】组条目可写入 `.agents/refactor-ignore.txt`，下次扫描将跳过。
 
 若某类腐烂在多个项目反复出现，走 `meta/rule-sedimentation` 的回流三判定。三条全「是」则抽象成新的 `legacy/` 规则块，补齐字段，写入框架 **git 工作副本**的 `reference/rules/legacy/`，并在回复中明确告知已回流的规则块 id。
 

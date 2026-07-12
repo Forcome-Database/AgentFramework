@@ -145,7 +145,7 @@
 
 - `CHANGELOG.md` 与 `VERSION`，取自模板。目标项目已存在则跳过。
 - `docs/index.md`，仅当阶段 1 数到的文档数量超过 3 篇时生成。
-- `.agents/skills-lock.json` 与 `.agents/plugins/marketplace.json`，取自 `templates/agents-dir/`。
+- `.agents/skills-lock.json`、`.agents/plugins/marketplace.json` 与 `.agents/refactor-decisions.md`，取自 `templates/agents-dir/`。
 - `scripts/check-docs.mjs`，从框架根目录复制。
 
 退出条件：全部文件已写入，且记录了完整的生成文件清单。该清单是阶段 6 的唯一扫描范围。
