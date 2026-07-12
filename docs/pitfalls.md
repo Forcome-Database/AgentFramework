@@ -153,3 +153,70 @@ if [ "$n" -eq 1 ] && [ -f "$d/$c" ] && [ ! -s "$d/$c" ]; then echo "$d"; fi
 **验证。** 靶子含 `adapters/__init__.py`（0 字节）、`live/__init__.py`（有内容）、`src/components/Button.tsx`。修复前命中 `./adapters` 与 `./src`，修复后只命中 `./adapters`。
 
 **教训。** `-s` 读起来像「是个非空文件」，实际只是「大小非零」。类型判定要显式写出来，不要指望大小判定捎带完成它。
+
+## 7. `legacy/` 的「至少两条排除条件」在语义上是空的——校验器只数行数
+
+**状态：未修复。触发条件是「有人写一个自动档的 `legacy/` 块」。**
+
+**现象。** `legacy/doc-fork` 的两条 `Do Not Apply When`：
+
+```
+Applies When:      同时存在 AGENTS.md 与 CLAUDE.md；CLAUDE.md 非空行 > 1
+Do Not Apply When: CLAUDE.md 唯一非空行是 @AGENTS.md   ← 是 Applies When 第 2 条的逻辑否定
+                   项目根目录不含 AGENTS.md              ← 是 Applies When 第 1 条的逻辑否定
+```
+
+只要 `Applies When` 成立，这两条**必然为假**。它们**恒假，等于零条排除条件**。
+
+**根因。** `AGENTS.md`、`reference/rule-block-spec.md`、`validateRemediation` 三处都强制「`legacy/` 块的 `Do Not Apply When` 至少两条」，理由写的是「腐烂与健康常常同形，误杀的代价远大于漏报，一条排除条件挡不住同形误判」。
+
+但校验器的实现是：
+
+```js
+const exclusions = (block.sections['Do Not Apply When'] || []).filter((l) => /^-\s/.test(l))
+if (exclusions.length < 2) { ... }
+```
+
+**它只数行数，不看语义。**把 `Applies When` 抄一遍再取反，就能凑够两行、通过校验，而防误杀能力为零。
+
+**为什么今天不炸。** `doc-fork` 现在是报告档，它不动任何文件，恒假的排除条件没有后果。危险的是未来任何一个**自动档**的 `legacy/` 块照这个样子写——它会真的动手，而它的「防误杀机制」是空的。
+
+**修复方向（未做）。** 校验器无法判定「这条排除是不是 `Applies When` 的取反」——那需要语义理解。可行的替代：要求 `Do Not Apply When` 中至少有一条**引用了 `Applies When` 里没有出现过的证据源**（`git log`、`.gitignore`、import 引用、文件内容特征）。这个可以机械判定：取两个字段的 token 集合，要求差集非空。
+
+## 8. 阶段 1 的反查机制与 `INIT.md` 的路径替换要求互斥，注定恒失败
+
+**状态：未修复。触发条件是「给任何一个非 `legacy/` 的规则块补 `Legacy Scan` 字段」。**
+
+**现象。** `REFACTOR.md` 阶段 1 要反查「`AGENTS.md` 里实际选入了哪些规则块」，方法是把规则块 `Rule` 字段的每一条，拿去在 `AGENTS.md` 里做逐字全等的整行匹配：
+
+```bash
+grep -Fqx -- "<条目原文>" AGENTS.md
+```
+
+**根因。** `INIT.md` 阶段 6 的路径存在门明令：
+
+> 规则块正文中的路径是**通用写法**，写入目标项目时**必须替换**为该项目的真实路径。例如 `services/` 在某个项目里是 `backend/app/services/`。**不做替换就无法通过本门。**
+
+于是：凡是 `Rule` 里含路径的规则块，生成的 `AGENTS.md` 里必然**不是原文** → 逐字匹配必然落空 → 该块永远反查不出来。
+
+两条要求各自都对，接在一起互斥。
+
+**为什么今天不炸。** 当前只有 `legacy/` 的 5 个块带 `Legacy Scan`，而它们由阶段 1 的第 2 部分**无条件纳入**，不走反查。反查的交集恒为空。
+
+**更糟的是它被提前免检了。** `REFACTOR.md` 阶段 1 写着「交集为空是**正常结果**，不要因此停下来告诉用户手册有缺陷」——这句话是为了避免误报而写的，但它同时把这个 bug 的唯一症状（交集为空）宣布为正常，于是它永远不会被发现。
+
+**修复方向（未做）。** 让 `INIT.md` 在生成 `AGENTS.md` 时，把选入的规则块 id 写进文件尾部的 HTML 注释（`<!-- rules: frontend/anti-over-abstraction, core/mandatory-test-gate -->`）。反查改为读这个注释，不再靠文本匹配。代价是改动 `INIT.md` 的生成契约。
+
+## 9. 「有 `Legacy Scan` 无 `Remediation`」的块能通过校验，但阶段 3 无法给它分组
+
+**状态：未修复。触发条件同第 8 条。**
+
+**现象。** `validateRemediation` 只强制「有 `Remediation` 必须有 `Legacy Scan`」，**反向不管**。一个只写 `Legacy Scan`、不写 `Remediation` 的块，`node scripts/validate-rules.mjs` 返回 0，通过。
+
+但 `REFACTOR.md` 阶段 3 是「按各块 `Remediation` 的 `可逆性` 分成【自动】与【报告】两组」——这种块**既不属于【自动】也不属于【报告】**，阶段 2 偏离清单的 `可逆性` 那一列没有值可填。
+
+**根因。** 「只扫不改」当初被当成合法用法放行了（`rule-block-spec.md` 至今仍写着「同一条规则可以同时有两者」，并示范 `frontend/anti-over-abstraction` 的 `Legacy Scan` 就是同一条 grep 去掉「新增」二字）。但 `REFACTOR.md` 的分组算法假定每个进入扫描集的块都有 `可逆性`。
+
+**为什么今天不炸。** 当前 5 个 `legacy/` 块全都有 `Remediation`。
+
+**修复方向（未做）。** 二选一：① 校验器强制「有 `Legacy Scan` 必须有 `Remediation`」，并更新 `rule-block-spec.md` 的示范；② `REFACTOR.md` 阶段 3 增加第三组【仅扫描】，只在阶段 6 报告命中，不做任何动作。②更符合「只扫不改是合法的」这个原意。
