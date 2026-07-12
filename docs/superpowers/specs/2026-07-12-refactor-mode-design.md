@@ -46,6 +46,19 @@
 - 动作：列出每个透传组件的路径与调用点数量，不删除。
 ```
 
+`可逆性: 自动` 的块必须额外声明**写作用域**：
+
+```markdown
+## Remediation
+- 可逆性：自动
+- 作用域：AGENTS.md, CLAUDE.md, docs/pitfalls.md
+- 动作：把编号的踩坑条目按原文迁入 docs/pitfalls.md，在约束文件中留一行指针。
+```
+
+约束的是**写**的范围，不是**扫**的范围。`Legacy Scan` 按定义只读——阶段 2 禁止任何写操作——所以扫什么无关安全，写什么才是。一个自动档的块完全可以调用 `node scripts/check-docs.mjs` 去探测死链，只要它最终只写 `docs/`。
+
+`可逆性: 报告` 的块不得声明 `作用域`，因为它不写任何文件。
+
 `可逆性` 只有两个合法取值：
 
 | 取值 | 含义 | 举例 |
@@ -181,10 +194,12 @@
 
 1. 有 `Remediation` 必须有 `Legacy Scan`。反之允许——只扫不改是合法的。
 2. `可逆性` 只能取 `自动` 或 `报告`。
-3. `可逆性: 自动` 的块，其 `Legacy Scan` 命令不得含代码路径特征：`.py`、`.ts`、`.tsx`、`.go`、`.rs`、`src/`。
+3. `可逆性: 自动` 必须声明 `作用域`，且其每一项须落在文档白名单内：`docs/` 前缀、`*.md`、`AGENTS.md`、`CLAUDE.md`、`CHANGELOG.md`。`可逆性: 报告` 不得声明 `作用域`。
 4. `legacy/` category 的块，`Do Not Apply When` 至少两条。
 
-断言 3 把可逆性分级从自觉变成强制。断言 4 把防误杀从「希望作者想到了」变成「校验器逼他想」——因为误杀的代价不对称，一条排除条件不足以防住同形误判。
+断言 3 约束的是**写**的范围而非**扫**的范围。`Legacy Scan` 按定义只读（阶段 2 禁止写操作），扫什么无关安全；`Remediation` 才动文件，它的作用域才是闸门。这个区分不是文字游戏——按扫描命令做黑名单会立刻误杀 `legacy/doc-index-rot`，它标为自动档，却需要调用 `node scripts/check-docs.mjs` 这个 `.mjs` 脚本来探测死链。
+
+断言 4 把防误杀从「希望作者想到了」变成「校验器逼他想」——因为误杀的代价不对称，一条排除条件不足以防住同形误判。
 
 ## 测试
 
@@ -193,7 +208,7 @@
 ```
 tests/fixtures/invalid-remediation-without-scan/legacy/a.md
 tests/fixtures/invalid-reversibility-value/legacy/b.md
-tests/fixtures/invalid-auto-touches-code/legacy/c.md      # 可逆性=自动 但 Legacy Scan 扫 src/
+tests/fixtures/invalid-auto-scope-escape/legacy/c.md      # 可逆性=自动 但作用域含 src/
 tests/fixtures/invalid-legacy-thin-exclusion/legacy/d.md  # legacy/ 块只有一条 Do Not Apply When
 ```
 
