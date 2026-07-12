@@ -105,15 +105,19 @@ frontend/anti-over-abstraction src/components/Wrapper.tsx
 
 只处理【自动】组。
 
-**【自动】组内的规则块必须串行执行，一次一个。**每个块执行完、其 `Verification` 通过后**立即提交**，再开始下一块。不要批量改完再一起提交 —— 因为规则块之间的作用域会重叠（`legacy/memory-bloat` 的作用域是 `AGENTS.md, CLAUDE.md, docs/`，`legacy/doc-fork` 的作用域是 `AGENTS.md, CLAUDE.md`，两个块都写 `CLAUDE.md`），未提交的兄弟块改动会让后一个块的基准失真：若 `memory-bloat` 先跑、改了 `CLAUDE.md`、尚未提交，`doc-fork` 随后用 `git show HEAD:CLAUDE.md` 取合并前的基准时，拿到的仍是原始文件——那些已被 `memory-bloat` 合法迁走的编号踩坑条目，因为以数字开头、正好命中条目行正则，会被 `doc-fork` 的内容保全核对误报为丢失，进而触发 `git checkout -- AGENTS.md CLAUDE.md` 回滚。这个回滚会把 `memory-bloat` 未提交的工作一起冲掉，而 `docs/pitfalls.md` 不在回滚列表里，踩坑条目最终同时躺在两个文件里——这个框架跑完一轮，会亲手制造一份双文件分叉，正是它自己要治的病。
+**【自动】组内的规则块必须串行执行，一次一个。**每个块执行完、其 `Verification` 通过后**立即提交**，再开始下一块。
 
-**每个块动手前，`git status --short` 必须为空。**非空即中止该块并转入报告，然后继续处理【自动】组中的下一块。不要以「阶段 0 已经检查过工作区干净」为由跳过这一步 —— 因为阶段 0 只在整轮开始时跑一次，而阶段 4 执行到第二个块时，第一个块可能已经改过文件。（`legacy/doc-fork` 的 `Verification` 里已经写了这条前置，但本阶段对【自动】组中的**所有**块统一要求，不指望每个块自己记得。）
+不要批量改完再一起提交 —— 因为规则块之间的作用域会重叠。当前的两个自动档块就重叠：`legacy/memory-bloat` 的作用域是 `AGENTS.md, CLAUDE.md, docs/`，`legacy/doc-index-rot` 的是 `docs/`，**两个都写 `docs/`**。
 
-**一个规则块一个 commit**，不是「一类违规一个 commit」—— 因为一个块内部可能有多种动作（`legacy/memory-bloat` 的情形①迁移踩坑条目与情形②拆分章节可能同时触发），按动作切分会让 commit 边界不可判定，而按块切分永远可判定。commit message 首行写清动作，正文写明依据的规则块 id。这样任何一块改错都能单独 `git revert`。
+未提交的兄弟块改动会让后一个块看到一个不一致的世界：它的 `Legacy Scan` 扫的是工作区（已被兄弟块改过），而它若要取 git 基准就会拿到未改过的版本。两者不一致时，任何基于「改前 vs 改后」的核对都会误判。串行 + 逐块提交把这个窗口关掉。
+
+**每个块动手前，`git status --short` 必须为空。**非空即中止该块并转入报告，然后继续处理【自动】组中的下一块。不要以「阶段 0 已经检查过工作区干净」为由跳过这一步 —— 因为阶段 0 只在整轮开始时跑一次，而阶段 4 执行到第二个块时，第一个块可能已经改过文件。（个别规则块的 `Verification` 里可能也写了这条前置，但本阶段对【自动】组中的**所有**块统一要求，不指望每个块自己记得。）
+
+**一个规则块一个 commit**，不是「一类违规一个 commit」—— 因为一个块内部可能对多个文件做多次改动（`legacy/memory-bloat` 会搬走多个章节，每章一个新文件），按动作切分会让 commit 边界不可判定，而按块切分永远可判定。commit message 首行写清动作，正文写明依据的规则块 id。这样任何一块改错都能单独 `git revert`。
 
 **提交时 `git add` 必须覆盖该块 `作用域` 中的全部路径，含新建的未追踪文件。**用 `git add -A -- <作用域各项>`。
 
-`legacy/memory-bloat` 的作用域是 `AGENTS.md, CLAUDE.md, docs/` 三处，它的情形①会新建 `docs/pitfalls.md`——对目标项目而言这往往是个全新文件，未被 git 追踪。若按习惯只 `git add AGENTS.md CLAUDE.md`，新文件就以未追踪状态留在工作区，**下一个块的前置检查会因此失败并把一个本来完全正确的块无辜降级为报告档**。
+`legacy/memory-bloat` 的作用域是 `AGENTS.md, CLAUDE.md, docs/` 三处，它会往 `docs/` 下新建章节文件——对目标项目而言这些都是全新文件，未被 git 追踪。若按习惯只 `git add AGENTS.md CLAUDE.md`，新文件就以未追踪状态留在工作区，**下一个块的前置检查会因此失败并把一个本来完全正确的块无辜降级为报告档**。
 
 **提交后 `git status --short` 必须为空。**非空即说明有作用域外的改动 —— 那就是越界，按下一条处理。这一条同时接住了「漏提交」和「越界」两种错误，不必分别检查。
 
@@ -121,7 +125,7 @@ frontend/anti-over-abstraction src/components/Wrapper.tsx
 
 理由：越界意味着某个自动档块写到了它 `作用域` 承诺之外的地方，这是对 `AGENTS.md` 「自动档必须声明作用域」这条硬约束的直接违反。它不是「这个块不适用」，而是「这个块的行为和它的声明对不上」——在搞清楚原因之前，不能让后面的块继续动手。这与「工作区不干净」「块自带的中止条件」两种情形不同，那两种只中止当前块、继续跑下一块。
 
-若某块的 `Remediation` 动作中写了中止条件——例如 `legacy/doc-fork` 的「遇到矛盾指令则中止本块，转入报告」——遇到该条件时立即中止该块，把它移入【报告】组，继续跑下一块，不要自行选一个方向。
+若某块的 `Remediation` 动作中写了中止条件，遇到该条件时立即中止该块，把它移入【报告】组，继续跑下一块，不要自行选一个方向。
 
 **改动文件清单从 git 派生，不靠人工记账：**`git diff --name-only <起始commit> HEAD`。
 
@@ -129,7 +133,7 @@ frontend/anti-over-abstraction src/components/Wrapper.tsx
 
 【自动】组的动作会改变目标项目的文件系统，而**扫描集是在阶段 1 锁定的**。这会漏检。
 
-具体的：`legacy/memory-bloat` 的情形②会往 `docs/` 下新建章节文件。若目标项目原本 `docs/` 下只有 3 篇文档，`legacy/doc-index-rot` 在阶段 1 会被正确排除（它的 `Applies When` 要求超过 3 篇）；但 `memory-bloat` 跑完后文档数超过了 3，`doc-index-rot` 此刻才真正适用——**而扫描集已经锁死，本轮永远不会发现它。这个框架跑完一轮，会亲手制造一个缺索引的 `docs/`，正是 `doc-index-rot` 存在的意义。**
+具体的：`legacy/memory-bloat` 会往 `docs/` 下新建章节文件。若目标项目原本 `docs/` 下只有 3 篇文档，`legacy/doc-index-rot` 在阶段 1 会被正确排除（它的 `Applies When` 要求超过 3 篇）；但 `memory-bloat` 跑完后文档数超过了 3，`doc-index-rot` 此刻才真正适用——**而扫描集已经锁死，本轮永远不会发现它。这个框架跑完一轮，会亲手制造一个缺索引的 `docs/`，正是 `doc-index-rot` 存在的意义。**
 
 这不是 `memory-bloat` 与 `doc-index-rot` 这一对的问题。任何一个自动档块新建或删除文件，都可能让另一个块的 `Applies When` 从不成立变成成立。所以要的是通解，不是补丁：
 
@@ -173,7 +177,9 @@ frontend/anti-over-abstraction src/components/Wrapper.tsx
 
    **不要要求 `check-docs.mjs` 返回 0。**它断言的是全局不变量：`CLAUDE.md` 必须恰为单行 `@AGENTS.md`、`AGENTS.md` ≤ 300 行、无死链。而本手册的服务对象是这些不变量已经被破坏的老项目 —— 要求它返回 0，等于要求一轮重构把所有病治好。
 
-   而 `legacy/doc-fork` 会**正确地拒绝**治其中一种：当 `CLAUDE.md` 含代码块、表格或散文段落时，它的内容保全核对对这些内容完全失明，于是它按设计转入报告档，不自动合并。此时 `CLAUDE.md` 保持多行，`checkTransclusion` 必然报错。若阶段 5 要求返回 0，**手册就永远走不到阶段 6，用户永远看不到报告**——而「文档已经腐烂」恰恰是目标项目的常态，不是异常。这是死锁，不是边角情形。
+   而其中至少一种**按设计就不会被自动治好**：`legacy/doc-fork` 是**报告档**，它只列出两份约束文件的差异，从不自动合并——因为合并需要理解内容的含义（哪两条重复、某条该进哪一节、是否互相矛盾），而自动档只做机械动作。于是 `CLAUDE.md` 保持多行，`checkTransclusion` 必然报错。
+
+   若阶段 5 要求 `check-docs.mjs` 返回 0，**手册就永远走不到阶段 6，用户永远看不到报告**——而「文档已经腐烂」恰恰是目标项目的常态，不是异常。这是死锁，不是边角情形。真实验收实测：一个 682 行 `CLAUDE.md` 的老项目，`check-docs.mjs` 从头到尾都返回非 0。
 
 5. **互斥门。** 检查扫描集中是否有 `exclusive-with` 非 `null` 的块。
 
