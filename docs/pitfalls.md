@@ -102,3 +102,54 @@ node scripts/check-docs.mjs  # 在含 fumadocs 索引的项目上返回 0
 - 需要分支时用显式 `if`，不要用 `&&`/`||` 链。
 
 **验证。** 第一个问题若未被发现，`frontend/design-token-consistency` 会被错误选入，生成的 `AGENTS.md` 会告诉未来的 AI「颜色一律取自主题 token」——而那个项目根本没有主题系统。规则措辞完美、语法正确，却是假话。这正是「默认排除」与「路径存在门」要防的东西，而它差点从验收脚本自己溜进来。
+
+## 5. `git log -- <dir>` 看不见工作区里未提交的删除，判活证据会说谎
+
+**现象。** 用 `git log -1 --format=%ci -- <dir>` 判断一个空目录「是被放弃的，还是正在重建的」。文件两年前提交、今天刚被 `rm` 掉但没提交时，该命令照样返回两年前——于是一个正在重建的活目录被报成「废弃两年」。
+
+**根因。** `git log -- <path>` 只读**已提交**历史。工作区里的删除还没进历史，它看不见。而 `find . -type d -empty` 看的是**工作区**。两条命令看的是两个不同的世界，拼在一起就得出了错误结论。
+
+雪上加霜的是：**git 根本不追踪空目录**。所以一个空目录既不会让 `git status` 变脏，也不会在 git 里留下任何痕迹——它对 git 完全隐形。
+
+**修复。** 加一条排除条件，同时看工作区：
+
+```bash
+git status --short -- "$dir"   # 非空 = 该目录正在被改动，不是被放弃的
+```
+
+`legacy/orphan-abstraction` 的 `Do Not Apply When` 里写死了这条。
+
+**验证。** 造一个回溯提交的靶子：
+
+```bash
+git commit --date="2023-01-01" -m x   # repositories/user.py
+rm repositories/user.py               # 不提交
+git log -1 --format=%ci -- repositories   # → 2023-01-01（说谎）
+git status --short -- repositories        # → " D repositories/user.py"（真相）
+```
+
+**教训。** 一条规则同时依赖「工作区」与「git 历史」两个数据源时，必须问：它们会不会不一致？不一致时哪个是真的？这个坑不是 `git log` 的 bug，是把两个时间尺度的证据当成同一个来用。
+
+## 6. NTFS 上目录的 `stat` 大小为 0，`[ ! -s ]` 会把目录误判为零字节文件
+
+**现象。** 扫描「只含一个零字节入口文件的目录」（如只有空 `__init__.py` 的 `adapters/`），命令误把一个只含**子目录**的目录也报了出来——一个只含 `components/` 的 `src/` 被报成废弃抽象层。
+
+**根因。**
+
+```bash
+n=$(ls -A "$d" | wc -l)
+if [ "$n" -eq 1 ] && [ ! -s "$d/$(ls -A "$d")" ]; then echo "$d"; fi
+```
+
+`-s` 判断的是「存在且大小非零」。在 NTFS/Git-Bash 上，**目录的 `stat` 大小是 0**，于是 `[ ! -s "$d/components" ]` 为真，`src/` 被判为「只含一个零字节文件」。
+
+**修复。** 加 `-f` 判定，要求那个唯一子项确实是普通文件：
+
+```bash
+c=$(ls -A "$d")
+if [ "$n" -eq 1 ] && [ -f "$d/$c" ] && [ ! -s "$d/$c" ]; then echo "$d"; fi
+```
+
+**验证。** 靶子含 `adapters/__init__.py`（0 字节）、`live/__init__.py`（有内容）、`src/components/Button.tsx`。修复前命中 `./adapters` 与 `./src`，修复后只命中 `./adapters`。
+
+**教训。** `-s` 读起来像「是个非空文件」，实际只是「大小非零」。类型判定要显式写出来，不要指望大小判定捎带完成它。
