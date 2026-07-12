@@ -30,8 +30,8 @@ GENERATION_ONLY
 - 命令：`git status --short` 中不应出现被删除的目录 —— 本块不执行删除。
 
 ## Legacy Scan
-- 命令：`find . -type d -empty -not -path "./.git/*" -not -path "./node_modules/*"`。
-- 命令：`find . -type d -not -path "./.git/*" -not -path "./node_modules/*" | while IFS= read -r d; do n=$(ls -A "$d" | wc -l); c=$(ls -A "$d"); if [ "$n" -eq 1 ] && [ -f "$d/$c" ] && [ ! -s "$d/$c" ]; then echo "$d"; fi; done`，列出只含一个零字节文件的目录。`[ -f ]` 不能省 —— 因为目录本身的大小在 NTFS 上报告为 0，省掉它会把「唯一子项是一个子目录」的目录也判为命中，于是一个只含 `components/` 的 `src/` 会被报成废弃抽象层（证据：`docs/pitfalls.md` 第 6 条）。
+- 命令：`find . -type d -empty -not -path "*/.git/*" -not -path "*/node_modules/*" -not -path "*/.next/*" -not -path "*/.swc/*"`。用 `*/` 前缀而不是 `./` —— 因为 `./node_modules/*` 只排除顶层的那一个，monorepo 里 `frontend/node_modules/` 会漏网（证据：在一个真实 monorepo 上，`./` 写法报出 14 个空目录，其中 8 个来自嵌套的 `node_modules/`、`.next/` 与 `.tmp/wrenai/.git/`；`*/` 写法报出 6 个，全部是真实信号）。
+- 命令：`find . -type d -not -path "*/.git/*" -not -path "*/node_modules/*" -not -path "*/.next/*" -not -path "*/.swc/*" | while IFS= read -r d; do n=$(ls -A "$d" | wc -l); c=$(ls -A "$d"); if [ "$n" -eq 1 ] && [ -f "$d/$c" ] && [ ! -s "$d/$c" ]; then echo "$d"; fi; done`，列出只含一个零字节文件的目录。`[ -f ]` 不能省 —— 因为目录本身的大小在 NTFS 上报告为 0，省掉它会把「唯一子项是一个子目录」的目录也判为命中，于是一个只含 `components/` 的 `src/` 会被报成废弃抽象层（证据：`docs/pitfalls.md` 第 6 条）。
 - 命令：对每个命中目录跑 `git log -1 --format=%ci -- <dir>`，取最后提交时间。
 - 命令：对每个命中目录跑 `git status --short -- <dir>`，非空即说明清空未提交，该目录正在被改动。
 - 命令：对每个命中目录名跑 `grep -rn "<dirname>" . --exclude-dir=.git`，统计 import 引用数。
