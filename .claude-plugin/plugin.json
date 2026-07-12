@@ -1,7 +1,7 @@
 {
   "name": "agent-framework",
   "version": "0.1.0",
-  "description": "规则素材库与生成器。扫描项目真实技术栈，按条件组装出一份不含虚假信息的 AGENTS.md。26 个带适用条件的规则块，五道自检门，默认排除。",
+  "description": "规则素材库与生成器。扫描项目真实技术栈，按条件组装出一份不含虚假信息的 AGENTS.md；再扫描存量文档与结构腐烂，自动整理可逆的，报告不可逆的。31 个带适用条件的规则块，默认排除。",
   "author": {
     "name": "Leo Xia"
   },
@@ -11,6 +11,7 @@
     "constraints",
     "code-generation",
     "rules",
-    "governance"
+    "governance",
+    "refactoring"
   ]
 }

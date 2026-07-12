@@ -1,7 +1,7 @@
 {
   "name": "agent-framework",
   "version": "0.1.0",
-  "description": "Scan a project's real tech stack and assemble a project-specific AGENTS.md from 26 conditioned rule blocks, gated by five self-checks.",
+  "description": "Scan a project's real tech stack and assemble a project-specific AGENTS.md from 31 conditioned rule blocks; then scan legacy docs and structure for rot, auto-fixing the reversible and reporting the rest.",
   "author": {
     "name": "Leo Xia"
   },
@@ -11,14 +11,16 @@
   "interface": {
     "displayName": "Agent Framework",
     "shortDescription": "为项目生成专属的 AGENTS.md 约束体系。",
-    "longDescription": "一个规则素材库与生成器。它先扫描目标项目的依赖清单与目录结构，逐块判定 26 个带适用条件的规则块，只写入有文件系统证据支撑的规则，再通过溯源、路径存在、样例污染、占位符、互斥五道门。默认排除：没有证据就不写。",
+    "longDescription": "一个规则素材库与生成器。它先扫描目标项目的依赖清单与目录结构，逐块判定 31 个带适用条件的规则块，只写入有文件系统证据支撑的规则，再通过溯源、路径存在、样例污染、占位符、互斥五道门。重构模式则反向扫描存量腐烂：自动整理文档层面可逆的问题，代码层面的问题只报告不动手。默认排除：没有证据就不写。",
     "developerName": "Leo Xia",
     "category": "Productivity",
     "capabilities": ["AGENTS.md", "Code Governance", "Project Setup"],
     "defaultPrompt": [
       "为当前项目初始化 agent 框架",
       "扫描这个项目并生成 AGENTS.md",
-      "检查这个项目的 AGENTS.md 与 CLAUDE.md 是否已经分叉"
+      "检查这个项目的 AGENTS.md 与 CLAUDE.md 是否已经分叉",
+      "扫描这个老项目的存量文档与结构腐烂",
+      "整理这个项目的烂摊子文档"
     ]
   }
 }

@@ -1,0 +1,13 @@
+# refactor-ignore
+#
+# 本文件列出你已确认不打算处理的存量违规。REFACTOR.md 阶段 2 扫描时跳过它们。
+#
+# 一行一条，格式：<规则块 id> <空格> <命中位置>
+# 以 # 开头的行是注释。空行忽略。
+#
+# 例：
+# legacy/orphan-abstraction database/repositories/
+# frontend/anti-over-abstraction src/components/Wrapper.tsx
+#
+# 只写你真的决定不改的。这个文件的价值在于它记录的是「决策」，
+# 不是「待办」—— 待办不写在这里，写在 docs/progress/todo.md。
