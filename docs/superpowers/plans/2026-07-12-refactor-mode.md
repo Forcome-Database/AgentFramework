@@ -224,10 +224,12 @@ test('legacy 块排除条件不足两条被拒绝', () => {
 - [ ] **Step 3: 跑测试，确认它们失败**
 
 ```bash
-node --test tests/
+npm test
 ```
 
 期望：4 个新测试 FAIL。失败原因是 `assert.equal(errors.length, 1)` 收到 `0`——校验器还不认识这些字段，一条错误都报不出来。
+
+**必须用 `npm test`（即裸 `node --test`），不要写 `node --test tests/`。**后者在 Node 22 会把 `tests` 当成一个测试文件去执行，输出 `# tests 1 / # fail 1`——真正的测试一个都没跑，而报错看起来像「有一个测试挂了」。这是 `docs/pitfalls.md` 第 2 条已经记录过的坑。
 
 **如果它们意外 PASS，停下来。**那说明 `runValidation` 报了错但报错原因不是你以为的那条（比如夹具写错了 frontmatter），测试是假绿的。
 
@@ -305,7 +307,7 @@ export function runValidation (rulesDir) {
 - [ ] **Step 5: 跑测试，确认全绿**
 
 ```bash
-node --test tests/
+npm test
 ```
 
 期望：26 个测试全过（原 22 个 + 新 4 个）。
@@ -564,7 +566,7 @@ node scripts/validate-rules.mjs
 - [ ] **Step 7: 跑全部测试，确认没有回归**
 
 ```bash
-node --test tests/
+npm test
 ```
 
 期望：26 个测试全过。
@@ -1013,7 +1015,7 @@ node -e "JSON.parse(require('node:fs').readFileSync('.claude-plugin/plugin.json'
 - [ ] **Step 6: 跑全部检查**
 
 ```bash
-node scripts/validate-rules.mjs && node scripts/check-docs.mjs && node --test tests/
+node scripts/validate-rules.mjs && node scripts/check-docs.mjs && npm test
 ```
 
 期望：三者全绿。
