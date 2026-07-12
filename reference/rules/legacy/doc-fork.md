@@ -58,6 +58,5 @@ GENERATION_ONLY
 - 命令：`diff AGENTS.md CLAUDE.md`，其输出即两份文件的差异条目清单。
 
 ## Remediation
-- 可逆性：自动
 - 作用域：AGENTS.md, CLAUDE.md, .agents/refactor-decisions.md
 - 动作：先跑 `Verification` 的前置。逐条读 `CLAUDE.md`，判断每一条：与 `AGENTS.md` 已有条目重复的丢弃，独有的并入语义对应的章节（无对应章节则新建），与已有条目矛盾的两条都保留并写进 `## 待人工裁决`。第一个 `## ` 之前的文件前言一并处理，不要漏（证据：初版按章节追加漏掉了它，被核对抓出）。每一个没有逐字保留原文的决定，写进 `.agents/refactor-decisions.md`。最后把 `CLAUDE.md` 改写为单行 `@AGENTS.md`。提交前跑零静默丢失核对，有任何一行既不在文件里也不在决策日志里，即 `git checkout -- .` 回滚并转入报告。

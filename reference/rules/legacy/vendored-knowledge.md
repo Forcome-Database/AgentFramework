@@ -29,5 +29,4 @@ GENERATION_ONLY
 - 命令：`grep -nE "^\s*(import |from .+ import |.+= *require\()" AGENTS.md CLAUDE.md`，其输出即命中的代码行。
 
 ## Remediation
-- 可逆性：报告
 - 动作：列出每个命中的代码块位置与它引用的库名，指出应路由到哪个 skill 或 Context7。不删除 —— 因为无法自动判定其中哪些行是项目特有配置。

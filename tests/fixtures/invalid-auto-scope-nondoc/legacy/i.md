@@ -24,6 +24,5 @@ GENERATION_ONLY
 - 命令：`true`
 
 ## Remediation
-- 可逆性：自动
 - 作用域：docs/deploy.sh
 - 动作：改 docs/ 下的非文档文件。

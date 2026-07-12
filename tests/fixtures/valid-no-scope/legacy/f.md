@@ -1,5 +1,5 @@
 ---
-id: legacy/b
+id: legacy/f
 category: legacy
 exclusive-with: null
 ---
@@ -24,5 +24,4 @@ GENERATION_ONLY
 - 命令：`true`
 
 ## Remediation
-- 可逆性：也许
-- 动作：列出命中项。
+- 动作：列出命中项，不动任何文件。

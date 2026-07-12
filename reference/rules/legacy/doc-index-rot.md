@@ -33,6 +33,5 @@ GENERATION_ONLY
 - 命令：`node scripts/check-docs.mjs <目标项目根目录> --only=doc-index`，返回非零即命中，其输出即未收录的文档与死链清单。
 
 ## Remediation
-- 可逆性：自动
 - 作用域：docs/
 - 动作：生成或补全 `docs/index.md`，为每篇未收录的文档加一行条目。修正指向真实存在文件的死链。指向文档站路由的链接不动。

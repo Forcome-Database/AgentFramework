@@ -24,6 +24,5 @@ GENERATION_ONLY
 - 命令：`true`
 
 ## Remediation
-- 可逆性：自动
 - 作用域：../outside/README.md
 - 动作：改仓库外的文档。

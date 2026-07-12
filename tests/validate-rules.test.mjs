@@ -78,14 +78,7 @@ test('有 Remediation 但缺 Legacy Scan 被拒绝', () => {
   assert.match(errors[0], /Legacy Scan/)
 })
 
-test('非法可逆性取值被拒绝', () => {
-  const errors = runValidation(fixture('invalid-reversibility-value'))
-  assert.equal(errors.length, 1)
-  assert.match(errors[0], /legacy\/b\.md/)
-  assert.match(errors[0], /可逆性/)
-})
-
-test('自动档作用域逃出文档白名单被拒绝', () => {
+test('作用域逃出文档白名单被拒绝', () => {
   const errors = runValidation(fixture('invalid-auto-scope-escape'))
   assert.equal(errors.length, 1)
   assert.match(errors[0], /legacy\/c\.md/)
@@ -106,18 +99,13 @@ test('空的 Legacy Scan 标题被拒绝', () => {
   assert.match(errors[0], /Legacy Scan/)
 })
 
-test('自动档缺失作用域被拒绝', () => {
-  const errors = runValidation(fixture('invalid-auto-scope-missing'))
-  assert.equal(errors.length, 1)
-  assert.match(errors[0], /legacy\/f\.md/)
-  assert.match(errors[0], /作用域/)
-})
-
-test('报告档声明作用域被拒绝', () => {
-  const errors = runValidation(fixture('invalid-report-declares-scope'))
-  assert.equal(errors.length, 1)
-  assert.match(errors[0], /legacy\/g\.md/)
-  assert.match(errors[0], /作用域/)
+test('无作用域的块合法 —— 它就是「只报告」', () => {
+  // 曾经这是个错误（「可逆性为自动的块必须声明作用域」）。
+  // 现在档位是从「有没有作用域」推导出来的，不是另贴的标签：
+  //   有作用域 → 写这些文件    无作用域 → 一个文件都不写
+  // 所以「无作用域」不再是缺陷，它是一个合法且有意义的声明。
+  const errors = runValidation(fixture('valid-no-scope'))
+  assert.deepEqual(errors, [], '无作用域 = 只报告，这是合法的')
 })
 
 test('自动档作用域逃出仓库被拒绝', () => {

@@ -24,6 +24,5 @@ GENERATION_ONLY
 - 命令：`true`
 
 ## Remediation
-- 可逆性：自动
 - 作用域：**/*.md
 - 动作：改全仓库所有 markdown 文件。

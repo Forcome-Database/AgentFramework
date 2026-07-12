@@ -4,7 +4,6 @@ import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 import {
   checkCounts,
-  checkLegacyTiers,
   checkRuleIdRefs,
   checkPlaceholders,
   checkPrunePatterns,
@@ -39,24 +38,6 @@ test('带消歧后缀的数字不被误判', () => {
   // 「26 个原有 + 5 个 legacy/ 存量扫描块」不是在声明总数
   const text = '31 个规则块（26 个原有 + 5 个 `legacy/` 存量扫描块）'
   assert.deepEqual(checkCounts({ 'README.md': text }, { total: 31 }), [])
-})
-
-// ---------- checkLegacyTiers ----------
-
-test('README 的档位表与规则块的实际可逆性不符被拒绝', () => {
-  const blocks = { 'doc-fork': '报告', 'doc-index-rot': '自动' }
-  const readme = '| `doc-fork` | `自动` | 否 |\n| `doc-index-rot` | `自动` | 否 |'
-  const errors = checkLegacyTiers(readme, blocks)
-  assert.equal(errors.length, 1)
-  assert.match(errors[0], /doc-fork/)
-  assert.match(errors[0], /README 说「自动」/)
-  assert.match(errors[0], /规则块是「报告」/)
-})
-
-test('档位表一致时通过', () => {
-  const blocks = { 'doc-fork': '报告', 'doc-index-rot': '自动' }
-  const readme = '| `doc-fork` | `报告` | 是 |\n| `doc-index-rot` | `自动` | 否 |'
-  assert.deepEqual(checkLegacyTiers(readme, blocks), [])
 })
 
 // ---------- checkRuleIdRefs ----------

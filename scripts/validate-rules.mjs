@@ -126,6 +126,17 @@ export function isDocScope (scope) {
   return (p === 'docs' || p.startsWith('docs/')) && isDir
 }
 
+// 一度有过一个「可逆性」枚举（自动 / 报告），试图**提前静态地**判定一个动作
+// 安不安全。它在开发中翻改了四次 —— 不是想不清楚，是这个问题在静态层面无解：
+// 安不安全依赖具体项目，不依赖规则。
+//
+// 现在的判据是一个**事实**而不是一个判断：**这个块写不写文件？**
+//
+//   声明了 作用域  → 它会写这些文件，且只能写这些文件（isDocScope 强制）
+//   没有 作用域    → 它一个文件都不写，只报告
+//
+// 档位是从这个事实里**推导**出来的，不是另外贴的一个标签。少一个枚举，少一处
+// 会分叉的事实，少一张要同步的 README 表格。
 export function validateRemediation (block) {
   const errors = []
   const { relPath } = block
@@ -136,30 +147,19 @@ export function validateRemediation (block) {
     errors.push(`${relPath}: 有 Remediation 却无 Legacy Scan —— 无扫描依据的整理动作无从触发`)
   }
 
-  let reversibility = null
   if (rem) {
-    const line = rem.find((l) => l.includes('可逆性'))
-    const m = line && line.match(/可逆性[：:]\s*(\S+)/)
-    reversibility = m ? m[1] : null
-    if (reversibility !== '自动' && reversibility !== '报告') {
-      errors.push(`${relPath}: Remediation 的可逆性须为「自动」或「报告」，实际为：${reversibility ?? '缺失'}`)
+    if (rem.some((l) => l.includes('可逆性'))) {
+      errors.push(`${relPath}: Remediation 不再有「可逆性」字段。写不写文件由是否声明「作用域」决定 —— 那是一个事实，不是一个判断`)
     }
 
     const scopeLine = rem.find((l) => l.includes('作用域'))
     const scopeRaw = scopeLine && scopeLine.match(/作用域[：:]\s*(.+)$/)
     const scopes = scopeRaw ? scopeRaw[1].split(/[,，]/).map((s) => s.trim()).filter(Boolean) : []
 
-    if (reversibility === '自动') {
-      if (scopes.length === 0) {
-        errors.push(`${relPath}: 可逆性为「自动」的块必须声明作用域 —— 不声明写哪里，就无法判定它是否只碰文档`)
+    for (const s of scopes) {
+      if (!isDocScope(s)) {
+        errors.push(`${relPath}: 作用域 ${s} 不合法 —— 只许写仓库内的文档：.md 文件或 docs/ 下的目录。绝对路径、家目录（~ $ %）、.. 逃逸、glob 一律拒绝`)
       }
-      for (const s of scopes) {
-        if (!isDocScope(s)) {
-          errors.push(`${relPath}: 自动档的作用域 ${s} 不合法 —— 只许写仓库内的文档：.md 文件或 docs/ 下的目录。绝对路径、家目录（~ $ %）、.. 逃逸、glob 一律拒绝`)
-        }
-      }
-    } else if (reversibility === '报告' && scopes.length > 0) {
-      errors.push(`${relPath}: 可逆性为「报告」的块不得声明作用域 —— 因为它不写任何文件`)
     }
   }
 

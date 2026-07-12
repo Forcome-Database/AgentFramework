@@ -21,5 +21,4 @@ GENERATION_ONLY
 - 命令：`true`
 
 ## Remediation
-- 可逆性：报告
 - 动作：列出命中项。

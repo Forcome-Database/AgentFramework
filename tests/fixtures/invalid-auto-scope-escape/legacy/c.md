@@ -24,6 +24,5 @@ GENERATION_ONLY
 - 命令：`true`
 
 ## Remediation
-- 可逆性：自动
 - 作用域：docs/index.md, src/components/
 - 动作：改文档，顺手改组件。

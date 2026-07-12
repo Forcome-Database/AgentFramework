@@ -50,21 +50,6 @@ export function checkCounts (files, actual) {
   return errors
 }
 
-export function checkLegacyTiers (readme, blocks) {
-  const errors = []
-  // README 的档位表：| `doc-fork` | `报告` | ...
-  const rowRe = /\|\s*`([a-z-]+)`\s*\|\s*`?(自动|报告)`?\s*\|/g
-  for (const m of readme.matchAll(rowRe)) {
-    const [, id, claimed] = m
-    const truth = blocks[id]
-    if (truth === undefined) continue
-    if (truth !== claimed) {
-      errors.push(`legacy/${id}: README 说「${claimed}」，规则块是「${truth}」。规则块是唯一事实源。`)
-    }
-  }
-  return errors
-}
-
 export function checkRuleIdRefs (files, known) {
   const errors = []
   const idRe = /`(core|meta|backend|frontend|docs|release|legacy)\/([a-z0-9-]+)`/g
@@ -149,7 +134,6 @@ export function runChecks (root) {
   // 唯一事实源：文件系统
   const rulesDir = path.join(root, 'reference', 'rules')
   const ids = new Set()
-  const tiers = {}
   for (const category of fs.readdirSync(rulesDir)) {
     const dir = path.join(rulesDir, category)
     if (!fs.statSync(dir).isDirectory()) continue
@@ -157,10 +141,6 @@ export function runChecks (root) {
       if (!file.endsWith('.md')) continue
       const name = path.basename(file, '.md')
       ids.add(`${category}/${name}`)
-      if (category === 'legacy') {
-        const m = fs.readFileSync(path.join(dir, file), 'utf8').match(/^-\s*可逆性[：:]\s*(\S+)/m)
-        if (m) tiers[name] = m[1]
-      }
     }
   }
   const actual = { total: ids.size }
@@ -188,10 +168,7 @@ export function runChecks (root) {
   }
 
   errors.push(...checkCounts(docs, actual))
-  if (docs['README.md']) {
-    errors.push(...checkLegacyTiers(docs['README.md'], tiers))
-    errors.push(...checkExampleBlocks(docs['README.md'], realBlocks))
-  }
+  if (docs['README.md']) errors.push(...checkExampleBlocks(docs['README.md'], realBlocks))
   errors.push(...checkRuleIdRefs(docs, ids))
   errors.push(...checkPlaceholders(docs))
   errors.push(...checkPrunePatterns(manuals))

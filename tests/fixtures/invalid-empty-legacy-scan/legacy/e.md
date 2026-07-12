@@ -23,5 +23,4 @@ GENERATION_ONLY
 ## Legacy Scan
 
 ## Remediation
-- 可逆性：报告
 - 动作：列出命中项。

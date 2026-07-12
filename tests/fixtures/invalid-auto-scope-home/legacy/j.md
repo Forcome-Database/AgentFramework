@@ -24,6 +24,5 @@ GENERATION_ONLY
 - 命令：`true`
 
 ## Remediation
-- 可逆性：自动
 - 作用域：~/.claude/CLAUDE.md
 - 动作：改用户家目录下的全局配置。

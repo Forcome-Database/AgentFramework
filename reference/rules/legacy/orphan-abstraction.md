@@ -37,5 +37,4 @@ GENERATION_ONLY
 - 命令：对每个命中目录名跑 `grep -rn "<dirname>" . --exclude-dir=.git`，统计 import 引用数。
 
 ## Remediation
-- 可逆性：报告
 - 动作：列出每个目录的路径、最后提交时间、import 引用数。不删除，不移动。

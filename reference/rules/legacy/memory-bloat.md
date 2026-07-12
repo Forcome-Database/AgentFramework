@@ -50,6 +50,5 @@ GENERATION_ONLY
 - 命令：`grep -nE '^## ' AGENTS.md CLAUDE.md`，其输出即章节清单。**逐章打开读内容再判断它是约束、踩坑日志还是参考资料。不要靠标题名猜。**
 
 ## Remediation
-- 可逆性：自动
 - 作用域：AGENTS.md, CLAUDE.md, docs/, .agents/refactor-decisions.md
 - 动作：逐章读 `<超行文件>` 的内容，判断每一章的性质。约束留在原地；踩坑日志迁入 `docs/pitfalls.md`，编号续用该文件现有的最大编号加一，不重排既有条目；参考资料（架构图、配置表、命令速查、技术栈）各自搬成 `docs/` 下一篇，原位留一行指针。搬到该文件行数降至 300 以下为止，优先搬最长的章节。每一个没有逐字保留原文的决定，写进 `.agents/refactor-decisions.md`。提交前跑零静默丢失核对，有任何一行既不在文件里也不在决策日志里，即 `git checkout -- .` 回滚并转入报告。
