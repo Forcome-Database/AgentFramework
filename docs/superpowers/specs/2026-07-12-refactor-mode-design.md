@@ -194,7 +194,7 @@
 
 1. 有 `Remediation` 必须有 `Legacy Scan`。反之允许——只扫不改是合法的。
 2. `可逆性` 只能取 `自动` 或 `报告`。
-3. `可逆性: 自动` 必须声明 `作用域`，且其每一项须落在文档白名单内：`docs/` 前缀、`*.md`、`AGENTS.md`、`CLAUDE.md`、`CHANGELOG.md`。`可逆性: 报告` 不得声明 `作用域`。
+3. `可逆性: 自动` 必须声明 `作用域`，且其每一项须落在文档白名单内：任意 `.md` 文件，或 `docs/` 下的任何文件。`可逆性: 报告` 不得声明 `作用域`。
 4. `legacy/` category 的块，`Do Not Apply When` 至少两条。
 
 断言 3 约束的是**写**的范围而非**扫**的范围。`Legacy Scan` 按定义只读（阶段 2 禁止写操作），扫什么无关安全；`Remediation` 才动文件，它的作用域才是闸门。这个区分不是文字游戏——按扫描命令做黑名单会立刻误杀 `legacy/doc-index-rot`，它标为自动档，却需要调用 `node scripts/check-docs.mjs` 这个 `.mjs` 脚本来探测死链。
@@ -206,10 +206,17 @@
 按 `anti-patterns.md` 第 7 条，每条新校验必须配一个**断言返回非零**的已知违规夹具：
 
 ```
-tests/fixtures/invalid-remediation-without-scan/legacy/a.md
-tests/fixtures/invalid-reversibility-value/legacy/b.md
-tests/fixtures/invalid-auto-scope-escape/legacy/c.md      # 可逆性=自动 但作用域含 src/
-tests/fixtures/invalid-legacy-thin-exclusion/legacy/d.md  # legacy/ 块只有一条 Do Not Apply When
+tests/fixtures/invalid-remediation-without-scan/legacy/a.md   # 有 Remediation 无 Legacy Scan
+tests/fixtures/invalid-reversibility-value/legacy/b.md        # 可逆性取值非法
+tests/fixtures/invalid-auto-scope-escape/legacy/c.md          # 自动档作用域含 src/
+tests/fixtures/invalid-legacy-thin-exclusion/legacy/d.md      # legacy/ 块只有一条 Do Not Apply When
+tests/fixtures/invalid-empty-legacy-scan/legacy/e.md          # Legacy Scan 标题在但内容为空
+tests/fixtures/invalid-auto-scope-missing/legacy/f.md         # 自动档未声明作用域
+tests/fixtures/invalid-report-declares-scope/legacy/g.md      # 报告档却声明了作用域
+
+七个夹具，不是四个。`validateRemediation` 有 **6 个可达的报错分支**，四条断言的说法是按语义分的，按分支分是六条。审查时发现其中两个分支零覆盖——「自动档未声明作用域」与「报告档却声明作用域」——补上了 f 和 g。
+
+e 是一个真实缺陷的回归夹具：`block.sections['Legacy Scan']` 只要标题存在就是数组，**空数组在 JS 里是真值**，所以 `if (rem && !scan)` 只能测出「标题缺失」，测不出「标题在、内容为空」。而同文件的 `validateBlock` 早就用对了 `!lines || lines.length === 0`。同一个文件里两种写法，抄错了那个。
 ```
 
 只测通过路径的检查形同虚设。`validate-rules.mjs` 初版因路径编码问题从不执行、退出码恒为 0，看起来一直在通过。
