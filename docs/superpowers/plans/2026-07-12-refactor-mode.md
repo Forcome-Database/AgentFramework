@@ -237,10 +237,39 @@ npm test
 
 在 `scripts/validate-rules.mjs` 中，`validateExclusivePairs` 函数之后、`loadBlocks` 之前插入：
 
+> **本代码块已按三轮审查的结果更新。**初稿里有三个缺陷，全部已修：`!scan` 检测不出空的 `## Legacy Scan` 标题（空数组在 JS 里是真值）；作用域白名单用正则 `/^docs\/|\.md$/` 表达，交替优先级让 `^` 只锚定第一个分支，任何 `.md` 结尾的字符串都放行，包括 `../../other-repo/README.md` 与 `~/.claude/CLAUDE.md`；错误消息说「只许写文档」，但 `~/.claude/CLAUDE.md` 就是文档，越界的是位置不是类型。照抄下面这一版，不要「优化」它。
+
 ```javascript
-// 可逆性为「自动」的块只许写文档。约束的是「写」的范围，不是「扫」的范围：
-// Legacy Scan 按定义只读（REFACTOR.md 阶段 2 禁止写操作），扫什么无关安全。
-const DOC_SCOPE = /^docs\/|\.md$/
+// 自动档会让 AI 直接动手改文件，所以作用域有两个上限，缺一不可：
+//   位置上限 —— 仓库内的字面相对路径
+//   类型上限 —— .md 文件，或 docs/ 下的目录
+//
+// 约束的是「写」的范围，不是「扫」的范围：Legacy Scan 按定义只读
+//（REFACTOR.md 阶段 2 禁止写操作），扫什么无关安全。
+//
+// 位置上限的四条检查都是有来历的，不要删：
+//   ~ / $ / %  —— 家目录与环境变量形态。这个框架的题材就是 CLAUDE.md，作者写
+//                 一个「全局 CLAUDE.md 腐烂」的块，最自然的作用域就是
+//                 ~/.claude/CLAUDE.md —— 仓库外、不在 git 里、没有 diff 可回滚。
+//   / 与 X:    —— 绝对路径。
+//   ..         —— 目录逃逸。
+//   *          —— glob。**/*.md 等于一张全仓库 markdown 的空白支票，
+//                 含 .github/ 的机器消费模板与 reference/rules/ 下的规则块自身。
+export function isDocScope (scope) {
+  const p = scope.replace(/\\/g, '/')
+
+  // 位置上限
+  if (/^[~$%]/.test(p)) return false
+  if (p.startsWith('/') || /^[A-Za-z]:/.test(p)) return false
+  if (p.split('/').includes('..')) return false
+  if (p.includes('*')) return false
+
+  // 类型上限
+  if (p.endsWith('.md')) return true
+  const last = p.split('/').filter(Boolean).pop() ?? ''
+  const isDir = p.endsWith('/') || !last.includes('.')
+  return (p === 'docs' || p.startsWith('docs/')) && isDir
+}
 
 export function validateRemediation (block) {
   const errors = []
@@ -248,7 +277,10 @@ export function validateRemediation (block) {
   const scan = block.sections['Legacy Scan']
   const rem = block.sections.Remediation
 
-  if (rem && !scan) {
+  // 注意是 scan.length === 0 而不是 !scan：标题存在但内容为空时，
+  // sections['Legacy Scan'] 是一个空数组，而空数组在 JS 里是真值。
+  // 同文件的 validateBlock 早就用对了这个写法，照它抄。
+  if (rem && (!scan || scan.length === 0)) {
     errors.push(`${relPath}: 有 Remediation 却无 Legacy Scan —— 无扫描依据的整理动作无从触发`)
   }
 
@@ -270,8 +302,8 @@ export function validateRemediation (block) {
         errors.push(`${relPath}: 可逆性为「自动」的块必须声明作用域 —— 不声明写哪里，就无法判定它是否只碰文档`)
       }
       for (const s of scopes) {
-        if (!DOC_SCOPE.test(s)) {
-          errors.push(`${relPath}: 自动档的作用域 ${s} 不在文档白名单内 —— 自动档只许写文档，代码永远只报告`)
+        if (!isDocScope(s)) {
+          errors.push(`${relPath}: 自动档的作用域 ${s} 不合法 —— 只许写仓库内的文档：.md 文件或 docs/ 下的目录。绝对路径、家目录（~ $ %）、.. 逃逸、glob 一律拒绝`)
         }
       }
     } else if (reversibility === '报告' && scopes.length > 0) {
@@ -559,7 +591,7 @@ node scripts/validate-rules.mjs
 期望：`✓ 31 个规则块全部通过`，退出码 0。
 
 **盯住三件事：**
-1. `legacy/doc-index-rot` 的作用域是 `docs/`，必须通过 `DOC_SCOPE` 正则。若报「不在文档白名单内」，说明 Task 1 的正则写错了。
+1. `legacy/doc-index-rot` 的作用域是 `docs/`，必须通过 `isDocScope()`。若报「不合法」，说明 Task 1 的位置或类型上限写错了。
 2. 5 个块每个都有至少 2 条 `Do Not Apply When`。
 3. 3 个 `报告` 档的块都**没有**声明 `作用域`。
 
@@ -1257,14 +1289,14 @@ git commit -m "验收：在真实老项目副本上跑通重构模式六阶段
 | Spec 章节 | 实现任务 |
 | --- | --- |
 | 规则块：五必需 + 两可选 | Task 1（校验器）、Task 3（格式规范） |
-| 写作用域白名单 | Task 1 Step 4 的 `DOC_SCOPE` |
+| 写作用域白名单 | Task 1 Step 4 的 `isDocScope()` |
 | 新增 category `legacy/` | Task 2 |
 | 5 个腐烂探针 | Task 2 Step 1-5 |
 | 扫描集公式 | Task 4 阶段 1 |
 | `REFACTOR.md` 六阶段 | Task 4 |
 | 抑制文件 | Task 4 阶段 2/6、Task 5 Step 2 |
 | 四条校验断言 | Task 1 Step 4 |
-| 4 个已知违规夹具 | Task 1 Step 1-2 |
+| 已知违规夹具 | Task 1 Step 1-2，共 11 个（`validateRemediation` 有 6 个可达分支，初稿只覆盖 4 个；审查又补出 4 个逃逸方向：仓库外、docs/ 下非文档、家目录、glob） |
 | 真实项目验收 | Task 7 |
 | 改动清单全部 12 项 | Task 1-6 |
 | 「不做什么」三条 | 无任务实现，这是排除项：不做棘轮基线、不自动改代码（Task 1 断言 3 强制）、不落盘 backlog |
