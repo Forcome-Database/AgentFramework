@@ -11,7 +11,6 @@ exclusive-with: null
 ## Do Not Apply When
 - 项目使用文档站，索引由文档站自身的侧边栏配置生成，即存在 `docs/.vitepress/`、`docusaurus.config.*` 或 `source.config.ts` 之一。
 - `docs/` 下的文档全部由本框架的状态机模板生成且从未被追加，即 `docs/` 中只有 `progress/` 与 `overview/` 两个子目录。
-- 报出的死链指向的是文档站路由而非文件系统路径，例如 `/docs/overview/quick-start` —— 这不是死链，是 `check-docs.mjs` 的已知假阳性（证据：`docs/pitfalls.md` 第 3 条，某 fumadocs 项目上报出 19 个假死链）。
 
 ## Output Target
 GENERATION_ONLY
@@ -19,7 +18,7 @@ GENERATION_ONLY
 ## Rule
 - 文档数超过 3 篇时必须有 `docs/index.md` —— 因为没有索引的文档目录，agent 只能靠文件名猜内容，猜错的成本是读完整篇。
 - 新增文档必须在同一次改动中补索引条目 —— 因为分两次提交时，第二次必然被遗忘。
-- 不要在索引中写文档站的路由路径 —— 因为 `check-docs.mjs` 按文件系统路径校验，路由路径会被判为死链（证据：某 fumadocs 项目上报出 19 个假死链）。
+- 不要在索引中写文档站的路由路径，例如 `/docs/overview/quick-start` —— 因为路由路径依赖站点配置，换一套文档站就全断，而 `check-docs.mjs` 会跳过以 `/` 开头的链接（证据：`docs/pitfalls.md` 第 3 条），所以断了也不会被检出。
 
 ## Verification
 - 命令：`node scripts/check-docs.mjs` 返回 0。

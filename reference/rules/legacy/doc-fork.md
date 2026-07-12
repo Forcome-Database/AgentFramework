@@ -11,7 +11,6 @@ exclusive-with: null
 ## Do Not Apply When
 - `CLAUDE.md` 的唯一非空行是 `@AGENTS.md`，说明它已是引用而非副本。
 - 项目根目录不含 `AGENTS.md`，此时 `CLAUDE.md` 是唯一事实源，不构成分叉。
-- 两份文件内容逐字节相同，说明是同步副本而非分叉，按 `meta/doc-governance` 处理即可。
 
 ## Output Target
 GENERATION_ONLY
@@ -25,6 +24,8 @@ GENERATION_ONLY
 ## Verification
 - 命令：`test "$(grep -c . CLAUDE.md)" -eq 1`。
 - 命令：`grep -q '^@AGENTS.md$' CLAUDE.md`。
+- 命令：内容保全核对。合并前 `cp CLAUDE.md .git/claude-before-merge.md`；合并后跑下面这段，应无任何输出：
+  `while IFS= read -r line; do [ -z "$line" ] && continue; grep -Fq -- "$line" AGENTS.md || echo "丢失：$line"; done < .git/claude-before-merge.md`
 
 ## Legacy Scan
 - 命令：`grep -c . CLAUDE.md`，大于 1 即命中。
@@ -33,4 +34,4 @@ GENERATION_ONLY
 ## Remediation
 - 可逆性：自动
 - 作用域：AGENTS.md, CLAUDE.md
-- 动作：把 `CLAUDE.md` 中 `AGENTS.md` 缺失的条目并入对应章节，再把 `CLAUDE.md` 改写为单行 `@AGENTS.md`。遇到矛盾指令则中止本块，转入报告。
+- 动作：先 `cp CLAUDE.md .git/claude-before-merge.md` 备份。把 `CLAUDE.md` 中 `AGENTS.md` 缺失的条目并入对应章节，再把 `CLAUDE.md` 改写为单行 `@AGENTS.md`。最后跑 `Verification` 的内容保全核对，有任何一行丢失即回滚全部改动并转入报告。遇到矛盾指令同样中止并转入报告。

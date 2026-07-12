@@ -32,5 +32,5 @@ GENERATION_ONLY
 
 ## Remediation
 - 可逆性：自动
-- 作用域：AGENTS.md, CLAUDE.md, docs/pitfalls.md
-- 动作：把编号的踩坑条目按原文迁入 `docs/pitfalls.md`，在约束文件中留一行指针。不改写条目措辞。
+- 作用域：AGENTS.md, CLAUDE.md, docs/
+- 动作：分两种情形。① 存在编号的踩坑条目：按原文迁入 `docs/pitfalls.md`，编号续用该文件现有的最大编号加一，不重排既有条目，在约束文件中留一行指向 `docs/pitfalls.md` 的指针。② 无编号条目但行数仍超 300：按主题把章节拆分到 `docs/` 下，约束文件中每个被拆走的章节留一行指针。两种情形都不改写原文措辞。
