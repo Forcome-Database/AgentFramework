@@ -70,3 +70,31 @@ test('parseRuleBlock 提取 frontmatter 与五个字段', () => {
   assert.equal(block.exclusiveWith, null)
   assert.deepEqual(block.sections['Output Target'], ['PREAMBLE'])
 })
+
+test('有 Remediation 但缺 Legacy Scan 被拒绝', () => {
+  const errors = runValidation(fixture('invalid-remediation-without-scan'))
+  assert.equal(errors.length, 1)
+  assert.match(errors[0], /legacy\/a\.md/)
+  assert.match(errors[0], /Legacy Scan/)
+})
+
+test('非法可逆性取值被拒绝', () => {
+  const errors = runValidation(fixture('invalid-reversibility-value'))
+  assert.equal(errors.length, 1)
+  assert.match(errors[0], /legacy\/b\.md/)
+  assert.match(errors[0], /可逆性/)
+})
+
+test('自动档作用域逃出文档白名单被拒绝', () => {
+  const errors = runValidation(fixture('invalid-auto-scope-escape'))
+  assert.equal(errors.length, 1)
+  assert.match(errors[0], /legacy\/c\.md/)
+  assert.match(errors[0], /作用域/)
+})
+
+test('legacy 块排除条件不足两条被拒绝', () => {
+  const errors = runValidation(fixture('invalid-legacy-thin-exclusion'))
+  assert.equal(errors.length, 1)
+  assert.match(errors[0], /legacy\/d\.md/)
+  assert.match(errors[0], /Do Not Apply When/)
+})
