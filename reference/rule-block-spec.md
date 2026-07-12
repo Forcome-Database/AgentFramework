@@ -24,12 +24,63 @@
 - `PREAMBLE`：写入 `AGENTS.md` 顶部的优先级声明段，无标题。
 - `GENERATION_ONLY`：只约束 `INIT.md` 的生成行为，不写入目标项目任何位置。
 
+## 两个可选字段
+
+供重构模式使用。缺失即「本块不参与存量扫描」。`INIT.md` 完全不读这两个字段。
+
+| 字段 | 语义 | 强制 |
+| --- | --- | --- |
+| `Legacy Scan` | 扫存量的命令。**存量语义，不带「新增」限定** | 否 |
+| `Remediation` | 扫到之后做什么。有它必须有 `Legacy Scan` | 否 |
+
+`Verification` 与 `Legacy Scan` 的区别是语义，不是格式：
+
+- `Verification` 是**增量**的：`应无新增命中`、`本次改动`、`新增的 hook`。它守住增量不恶化。
+- `Legacy Scan` 是**存量**的：`应无命中`。它清算历史。
+
+同一条规则可以同时有两者。例如 `frontend/anti-over-abstraction` 的 `Verification` 是「`grep ... src/` 应无新增命中」，它的 `Legacy Scan` 就是同一条 grep 去掉「新增」二字。
+
+### Remediation 的两个可逆性档位
+
+```
+## Remediation
+- 可逆性：自动
+- 作用域：AGENTS.md, docs/pitfalls.md
+- 动作：把编号的踩坑条目按原文迁入 docs/pitfalls.md。
+```
+
+| 取值 | 含义 | 是否须声明作用域 |
+| --- | --- | --- |
+| `自动` | AI 直接动手。只许写文档 | 必须，且每项须落在文档白名单内 |
+| `报告` | 只列清单交给用户，不动文件 | 不得声明 —— 因为它不写任何文件 |
+
+文档白名单由 `scripts/validate-rules.mjs` 导出的 `isDocScope(scope)` 判定，守两个上限：
+
+- **类型上限**：`.md` 文件，或 `docs/` 下的目录。`docs/deploy.sh` 被拒。
+- **位置上限**：仓库内的相对路径。绝对路径（`/etc/x.md`、`C:/Windows/x.md`）与 `..` 逃逸（`../other-repo/README.md`）一律被拒。
+
+**位置上限不是多余的。**第一版把白名单写成正则 `/^docs\/|\.md$/`——交替优先级让 `^` 只锚定了第一个分支，于是任何以 `.md` 结尾的字符串都放行，包括 `../../other-repo/README.md` 和用户全局的 `~/.claude/CLAUDE.md`。类型上限还在，位置上限没了。审查时用 PoC 实测到零报错才发现。
+
+教训：**用正则表达一个安全边界，很容易在"简化"时悄悄删掉一条你没意识到它在承担职责的约束。**改成显式函数后，两个上限各占一行，删掉哪条都看得见。
+
+**作用域约束的是「写」的范围，不是「扫」的范围。** `Legacy Scan` 按定义只读——`REFACTOR.md` 阶段 2 禁止任何写操作——所以它扫什么无关安全。一个自动档的块完全可以调用 `node scripts/check-docs.mjs` 去探测死链，只要它最终只写 `docs/`。
+
+以上由 `scripts/validate-rules.mjs` 的 `validateRemediation` 强制。
+
+### legacy/ category 的额外要求
+
+`legacy/` 下的块，`Do Not Apply When` 至少两条。
+
+理由：这类块判定的是「某个东西是不是腐烂」，而腐烂与健康常常同形——空目录既可能是被放弃的抽象层，也可能是刚清空正在重建的活目录。误杀的代价（删掉活代码）远大于漏报的代价（没清理干净）。一条排除条件不足以防住同形误判。
+
+同样由 `validateRemediation` 强制。
+
 ## frontmatter
 
 ```
 ---
 id: <category>/<文件名去掉 .md>
-category: <core|meta|backend|frontend|docs|release>
+category: <core|meta|backend|frontend|docs|release|legacy>
 exclusive-with: <对手块 id> 或 null
 ---
 ```
