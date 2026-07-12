@@ -57,7 +57,14 @@
 文档白名单由 `scripts/validate-rules.mjs` 导出的 `isDocScope(scope)` 判定，守两个上限：
 
 - **类型上限**：`.md` 文件，或 `docs/` 下的目录。`docs/deploy.sh` 被拒。
-- **位置上限**：仓库内的相对路径。绝对路径（`/etc/x.md`、`C:/Windows/x.md`）与 `..` 逃逸（`../other-repo/README.md`）一律被拒。
+- **位置上限**：仓库内的字面相对路径。四种形态一律被拒，与源码逐条对应：
+
+| 形态 | 例子 | 为什么拒 |
+| --- | --- | --- |
+| 家目录与环境变量 | `~/.claude/CLAUDE.md`、`$HOME/x.md`、`%USERPROFILE%/x.md` | 仓库外、不在 git 里、没有 diff 可回滚。而这个框架的题材就是 `CLAUDE.md`，作者写一个「全局 CLAUDE.md 腐烂」的块，最自然的作用域就是那个路径 |
+| 绝对路径 | `/etc/x.md`、`C:/Windows/x.md` | 同上 |
+| `..` 逃逸 | `../other-repo/README.md` | 同上 |
+| glob | `**/*.md`、`docs/**/*.md` | 等于一张全仓库 markdown 的空白支票，含 `.github/` 的机器消费模板与 `reference/rules/` 下的规则块自身。作用域不需要 glob，目录前缀已覆盖子树 |
 
 **位置上限不是多余的。**第一版把白名单写成正则 `/^docs\/|\.md$/`——交替优先级让 `^` 只锚定了第一个分支，于是任何以 `.md` 结尾的字符串都放行，包括 `../../other-repo/README.md` 和用户全局的 `~/.claude/CLAUDE.md`。类型上限还在，位置上限没了。审查时用 PoC 实测到零报错才发现。
 
