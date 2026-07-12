@@ -220,3 +220,53 @@ grep -Fqx -- "<条目原文>" AGENTS.md
 **为什么今天不炸。** 当前 5 个 `legacy/` 块全都有 `Remediation`。
 
 **修复方向（未做）。** 二选一：① 校验器强制「有 `Legacy Scan` 必须有 `Remediation`」，并更新 `rule-block-spec.md` 的示范；② `REFACTOR.md` 阶段 3 增加第三组【仅扫描】，只在阶段 6 报告命中，不做任何动作。②更符合「只扫不改是合法的」这个原意。
+
+## 10. `git check-ignore` 对「带尾部斜杠且不存在」的路径给假阳性，把路径存在门整个废掉
+
+**现象。** 路径存在门为了不误报 `.env`（运行时文件，正确地在 `.gitignore` 里），加了一条豁免：
+
+```bash
+git check-ignore -q "$path"    # 返回 0 即被忽略，豁免本门
+```
+
+结果**每一个不存在的目录都被判为「已被 gitignore」**，整道门失效：
+
+```
+git check-ignore -q "src/services/api/"   → 0   ← 该目录根本不存在，也不在 .gitignore 里
+git check-ignore -q "nonexistent/dir/"    → 0
+git check-ignore -q "web/src/stores/"     → 0
+```
+
+**根因。** 带尾部斜杠时，`git check-ignore -v` 报告匹配到了 `.gitignore` 的一个**空行**：
+
+```
+$ git check-ignore -v "foo/bar/"
+.gitignore:27:	foo/bar/          ← 第 27 行是空行，pattern 字段为空
+exit 0
+
+$ git check-ignore -v "foo/bar"    ← 剥掉斜杠
+exit 1                              ← 正确
+```
+
+而 `AGENTS.md` 里的目录路径**全都带尾部斜杠**（`src/services/api/`、`backend/app/services/`）。
+
+**这道门是这个框架自称「最强的反幻觉门」**——它专治「规则措辞正确却引用不存在的目录」。豁免规则加上去的那一刻，它在自己要治的那个场景里彻底失效了：一条写着「API 请求统一放在 `src/services/api/`」而该目录不存在的规则，会被判为「已被 gitignore，豁免」并放行。
+
+**更阴险的是它依赖目标项目 `.gitignore` 的具体内容。**同一段判定，在框架仓库里 `git check-ignore -q "foo/bar/"` 返回 1（正确），在被验收的真实项目里返回 0（假阳性）。**同一段代码，一个仓库里对，另一个仓库里静默失效。**这比稳定地坏更难发现——它能通过你所有的自测。
+
+**修复。** 剥掉尾部斜杠再查：
+
+```bash
+git check-ignore -q "${path%/}"
+```
+
+实测（真实项目）：
+
+| 路径 | 存在 | 带斜杠 | 剥斜杠 |
+| --- | --- | --- | --- |
+| `.env` | 是 | 豁免 | 豁免 ✓ |
+| `src/services/api/` | 否 | **豁免** ✗ | 抓住 ✓ |
+| `web/src/stores/` | 否 | **豁免** ✗ | 抓住 ✓ |
+| `frontend/.next/` | 是 | 豁免 | 豁免 ✓ |
+
+**教训。** 这个 bug 是**为了修一个误报而引入的**——`.env` 的假死链是真问题，但补丁的副作用是把整道门废了。**一道门加豁免条件时，必须问：这个豁免会不会把门本身豁免掉？**而验证它的唯一办法是：**喂给它一个本该被抓住的东西，确认它还抓得住。**只测「`.env` 现在不误报了」是不够的——那只验证了豁免生效，没验证门还活着。

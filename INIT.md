@@ -153,7 +153,17 @@
 
    规则块正文中的路径是**通用写法**，写入目标项目时必须替换为该项目的真实路径。例如 `services/` 在某个项目里是 `backend/app/services/`。不做替换就无法通过本门。
 
-   **被 `.gitignore` 匹配的路径豁免本门**，用 `git check-ignore -q <路径>` 判定（返回 0 即被忽略）。因为它们按定义就不在仓库里：`.env` 是运行时文件，仓库里只有 `.env.example`；构建产物、虚拟环境同理。一条正确描述运行时约定的规则（「环境变量统一从 `.env` 读取」）会被本门误判为死链（证据：在一个真实 FastAPI 项目上验收时，`backend/python-config-management` 的 `.env` 正是这样被误报的）。
+   **被 `.gitignore` 匹配的路径豁免本门。**因为它们按定义就不在仓库里：`.env` 是运行时文件，仓库里只有 `.env.example`；构建产物、虚拟环境同理。一条正确描述运行时约定的规则（「环境变量统一从 `.env` 读取」）会被本门误判为死链（证据：在一个真实 FastAPI 项目上验收时，`backend/python-config-management` 的 `.env` 正是这样被误报的）。
+
+   **判定命令必须先剥掉尾部斜杠：**
+
+   ```bash
+   git check-ignore -q "${路径%/}"     # 返回 0 即被忽略，豁免本门
+   ```
+
+   **`%/` 不能省。**`git check-ignore` 对一个**带尾部斜杠且不存在**的路径会给出假阳性——它会去匹配 `.gitignore` 里的一个空行并返回 0。而 `AGENTS.md` 里的目录路径全都带尾部斜杠。不剥掉它，本门会把**每一个不存在的目录**都判为「已被 gitignore，豁免」——**这道门就在它被造出来要治的那个场景里彻底失效了**（证据：`docs/pitfalls.md` 第 10 条，在一个真实项目上实测，`git check-ignore -q "src/services/api/"` 返回 0，而 `git check-ignore -q "src/services/api"` 返回 1）。
+
+   更阴险的是它**依赖目标项目 `.gitignore` 的具体内容**：同一段判定，在一个仓库里正确，在另一个仓库里静默失效。
 
 3. **样例污染门。** 在生成文件清单上搜索 `reference/example-AGENTS.md` 中出现的技术栈词汇与路径：`server/services/`、`web/src/stores/`、`web/src/lib/theme.ts`、PostgreSQL、Zustand。除非目标项目确实使用，须有阶段 1 的依赖清单证据，否则命中即失败。
 
