@@ -133,3 +133,30 @@
 > 本规则块基于单一样本，尚未获得跨项目验证。初始化时若目标项目结构不同，沿用目标项目既有结构，并通过双向沉淀回流修正本块。
 
 `INIT.md` 阶段 7 会把这条声明原样报告给用户。规则的可信度必须和规则一起被交付。
+
+## legacy/ 规则块的证据来源
+
+`reference/rules/legacy/` 下 5 个块不来自对外部项目的新调研。4 个来自 `reference/anti-patterns.md`——那份档案本身就是对真实项目状态的记录，升格只是把它们从「生成器的自检清单」变成「目标项目的探针」。第 5 个不来自 anti-patterns，来自复用既有能力。
+
+| 规则块 | 来源 | 原始证据 |
+| --- | --- | --- |
+| `legacy/doc-fork` | anti-patterns 第 1 条 | 某财务自动化项目的一次修订把「多命中凭证按日期自动消歧」改为「一律交人工复核」，只写进了 `CLAUDE.md`，`AGENTS.md` 至今保留旧规则，两份文件同一行号给出正面矛盾的指令；另一爬虫项目 `AGENTS.md`（33KB）停在旧架构、`CLAUDE.md`（27KB）是新版 |
+| `legacy/memory-bloat` | anti-patterns 第 2 条 | 某项目 `CLAUDE.md` 十天内从 10KB 增至 146KB，51 条踩坑记录漂移成三种格式，顶部「全部阶段完成」的状态摘要在此后上百条记录中从未更新 |
+| `legacy/orphan-abstraction` | anti-patterns 第 3 条（部分支持，见下） | 某项目留下空的 `database/repositories/` 目录 |
+| `legacy/vendored-knowledge` | anti-patterns 第 6 条 | 某浏览器自动化库的选择器陷阱与反爬指纹配方，在两个项目的 `CLAUDE.md` 中代码几乎逐字相同 |
+| `legacy/doc-index-rot` | 无 anti-patterns 来源 | `check-docs.mjs` 的死链检测与 `docs/index.md` 约定已存在，本块只是把现成能力接进重构扫描 |
+
+anti-patterns 第 4 条（规则脱离适用边界）已由互斥对机制处理，不需要新增探针。
+
+第 5、7、8 条约束的是**框架自身的开发行为**（检查脚本自匹配、静默通过的检查、夹具驱动测试掩盖真实形态），在目标项目的文件系统上不留下可扫描痕迹，因此不升格，留在 `anti-patterns.md`。
+
+### `legacy/orphan-abstraction` 的引证不是嫁接
+
+早期草稿曾直接引用 anti-patterns 第 3 条来支撑整套判活方法（`git log -1`、`git status --short`、import 引用计数、`.gitkeep` 例外），但第 3 条从未论证过这套方法——它只记录了一个现象。这是嫁接证据：把一条评审通过的规则块，安在了一段它并不支持的论证上。
+
+现在的 `reference/rules/legacy/orphan-abstraction.md` 把两件事分开写：
+
+- **机械事实（anti-patterns 第 3 条实际支持的）**：某项目确实遗留过一个空的 `database/repositories/` 目录，证明「引入抽象层后放弃、只留空目录」这类腐烂真实存在。
+- **引证之外、本块自己的设计**：如何把「已放弃」和「刚清空、正在重建」区分开——`git log -1` 看最后提交时间、`git status --short` 看工作区是否有未提交改动、import 引用计数、`.gitkeep` 例外——anti-patterns 第 3 条完全没有提供这套方法，目录命名本身也不含时间信息。这部分的正当性来自「误杀代价远大于漏报代价」这条独立论证，不是从证据「推出」的。
+
+两者的边界在 `reference/rules/legacy/orphan-abstraction.md` 的 `Rule` 字段里逐条区分，写 evidence.md 时按这个区分转述，不把机械事实之外的方法论也算作 anti-patterns 的证据。
