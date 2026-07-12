@@ -1,5 +1,13 @@
 # 重构模式实施计划
 
+> **⚠️ 本文件是历史记录，不是现行设计。**
+>
+> 其中的档位分级已被真实项目验收推翻（commit `3f76a63`）：`legacy/doc-fork` 在本文中标为**自动档**，最终是**报告档**；`legacy/memory-bloat` 的「迁移踩坑条目」动作已被删除。
+>
+> **现行设计以这三处为准**：`reference/rules/legacy/` 下的规则块、`REFACTOR.md`、`README.md` 的「重构模式」一节。
+>
+> 保留本文件是为了记录推理过程与被推翻的假设。不要照它写新规则块。
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 让框架在生成 `AGENTS.md` 之外，还能扫描老项目的存量文档与结构腐烂，自动整理可逆的文档问题，报告不可逆的代码问题。

@@ -6,7 +6,7 @@ exclusive-with: null
 
 ## Applies When
 - `docs/` 下的 Markdown 文档数超过 3 篇。
-- 不存在 `docs/index.md`，或 `node scripts/check-docs.mjs` 返回非零。
+- 不存在 `docs/index.md`，或 `node scripts/check-docs.mjs <目标项目根目录>` 返回非零。
 
 ## Do Not Apply When
 - 项目使用文档站，索引由文档站自身的侧边栏配置生成，即存在 `docs/.vitepress/`、`docusaurus.config.*` 或 `source.config.ts` 之一。
@@ -21,12 +21,12 @@ GENERATION_ONLY
 - 不要在索引中写文档站的路由路径，例如 `/docs/overview/quick-start` —— 因为路由路径依赖站点配置，换一套文档站就全断，而 `check-docs.mjs` 会跳过以 `/` 开头的链接（证据：`docs/pitfalls.md` 第 3 条），所以断了也不会被检出。
 
 ## Verification
-- 命令：`node scripts/check-docs.mjs` 返回 0。
+- 命令：`node scripts/check-docs.mjs <目标项目根目录>` 返回 0。
 - 自查：`docs/` 下每一篇文档，是否都能从 `docs/index.md` 一跳到达？
 
 ## Legacy Scan
 - 命令：`find docs -name "*.md" | wc -l`，超过 3 且 `test -e docs/index.md` 失败即命中。
-- 命令：`node scripts/check-docs.mjs`，返回非零即命中，其输出即死链清单。
+- 命令：`node scripts/check-docs.mjs <目标项目根目录>`，返回非零即命中，其输出即死链清单。
 
 ## Remediation
 - 可逆性：自动

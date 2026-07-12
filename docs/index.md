@@ -9,5 +9,5 @@
 
 ## 重构模式的设计与实施
 
-- [`superpowers/specs/2026-07-12-refactor-mode-design.md`](superpowers/specs/2026-07-12-refactor-mode-design.md) —— 重构模式设计规格：为什么规则块的增量语义不够用，`Legacy Scan` / `Remediation` 两个可选字段怎么定义。
-- [`superpowers/plans/2026-07-12-refactor-mode.md`](superpowers/plans/2026-07-12-refactor-mode.md) —— 六个任务的实施计划与任务边界。
+- [`superpowers/specs/2026-07-12-refactor-mode-design.md`](superpowers/specs/2026-07-12-refactor-mode-design.md)（历史记录，已被真实项目验收推翻，勿据此写新规则块） —— 重构模式设计规格：为什么规则块的增量语义不够用，`Legacy Scan` / `Remediation` 两个可选字段怎么定义。
+- [`superpowers/plans/2026-07-12-refactor-mode.md`](superpowers/plans/2026-07-12-refactor-mode.md)（历史记录，已被真实项目验收推翻，勿据此写新规则块） —— 六个任务的实施计划与任务边界。
