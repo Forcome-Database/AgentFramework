@@ -133,3 +133,17 @@ test('自动档作用域为 docs/ 下非文档被拒绝', () => {
   assert.match(errors[0], /legacy\/i\.md/)
   assert.match(errors[0], /作用域/)
 })
+
+test('自动档作用域为家目录形态被拒绝', () => {
+  const errors = runValidation(fixture('invalid-auto-scope-home'))
+  assert.equal(errors.length, 1)
+  assert.match(errors[0], /legacy\/j\.md/)
+  assert.match(errors[0], /作用域/)
+})
+
+test('自动档作用域为 glob 被拒绝', () => {
+  const errors = runValidation(fixture('invalid-auto-scope-glob'))
+  assert.equal(errors.length, 1)
+  assert.match(errors[0], /legacy\/k\.md/)
+  assert.match(errors[0], /作用域/)
+})

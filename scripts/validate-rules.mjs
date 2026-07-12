@@ -99,15 +99,27 @@ export function validateExclusivePairs (blocks) {
 }
 
 // 自动档会让 AI 直接动手改文件，所以作用域有两个上限，缺一不可：
+//   位置上限 —— 仓库内的字面相对路径
 //   类型上限 —— .md 文件，或 docs/ 下的目录
-//   位置上限 —— 仓库内的相对路径。绝对路径与 .. 逃逸一律拒绝
 //
-// 位置上限不是多余的。一个只查后缀的白名单会放行 ../../other-repo/README.md
-// 与 ~/.claude/CLAUDE.md —— 那正是本闸门要挡住的、无人复核的跨仓库改动。
+// 位置上限的四条检查都是有来历的，不要删：
+//   ~ / $ / %  —— 家目录与环境变量形态。注释曾声称挡住 ~/.claude/CLAUDE.md，
+//                 实际放行了它。这个框架的题材就是 CLAUDE.md，作者写一个
+//                 「全局 CLAUDE.md 腐烂」的块，最自然的作用域就是那个路径。
+//   / 与 X:    —— 绝对路径。
+//   ..         —— 目录逃逸。
+//   *          —— glob。**/*.md 等于一张全仓库 markdown 的空白支票，
+//                 含 .github/ 的机器消费模板与 reference/rules/ 下的规则块自身。
 export function isDocScope (scope) {
   const p = scope.replace(/\\/g, '/')
+
+  // 位置上限
+  if (/^[~$%]/.test(p)) return false
   if (p.startsWith('/') || /^[A-Za-z]:/.test(p)) return false
   if (p.split('/').includes('..')) return false
+  if (p.includes('*')) return false
+
+  // 类型上限
   if (p.endsWith('.md')) return true
   const last = p.split('/').filter(Boolean).pop() ?? ''
   const isDir = p.endsWith('/') || !last.includes('.')
@@ -143,7 +155,7 @@ export function validateRemediation (block) {
       }
       for (const s of scopes) {
         if (!isDocScope(s)) {
-          errors.push(`${relPath}: 自动档的作用域 ${s} 不在文档白名单内 —— 自动档只许写文档，代码永远只报告`)
+          errors.push(`${relPath}: 自动档的作用域 ${s} 不合法 —— 只许写仓库内的文档：.md 文件或 docs/ 下的目录。绝对路径、家目录（~ $ %）、.. 逃逸、glob 一律拒绝`)
         }
       }
     } else if (reversibility === '报告' && scopes.length > 0) {
