@@ -131,3 +131,20 @@ test('runChecks 的 only=doc-index 仍能抓出索引自己的问题', () => {
   assert.ok(errors.some((e) => /死链|nope/.test(e)), '索引里的死链要抓')
   assert.ok(errors.some((e) => /b\.md/.test(e)), '未收录的文档要抓')
 })
+
+test('checkIndexCoverage 用相对路径调用时不误报（真实 CLI 的调用形态）', () => {
+  const dir = tmpProject({
+    'docs/index.md': '# 索引\n\n- [a](a.md)\n- [b](sub/b.md)\n',
+    'docs/a.md': '# A\n',
+    'docs/sub/b.md': '# B\n'
+  })
+  const cwd = process.cwd()
+  try {
+    process.chdir(dir)
+    // CLI 就是这样调的：node scripts/check-docs.mjs . --only=doc-index
+    assert.deepEqual(checkIndexCoverage('.'), [],
+      '相对 root 下不该误报。绝对路径的测试测不出这个 —— linked 用 path.resolve、walk 用 path.join，两者永远对不上。')
+  } finally {
+    process.chdir(cwd)
+  }
+})

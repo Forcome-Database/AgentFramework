@@ -45,7 +45,14 @@ export function checkDeadLinks (content, root, sourceFile) {
 }
 
 // docs/ 下的每一篇 .md（index.md 自己除外）都必须能从 docs/index.md 一跳到达。
-export function checkIndexCoverage (root) {
+export function checkIndexCoverage (rawRoot) {
+  // root 必须先 resolve。否则 CLI 用相对路径（`.`）调用时，linked 里是
+  // path.resolve 产出的绝对路径，而 walk 里是 path.join 产出的相对路径，
+  // 两个集合永远对不上 —— 每一篇文档都会被误报为「未收录」。
+  //
+  // 单元测试用 mkdtemp 的绝对路径，所以测不出这个 bug。它只在真实调用
+  // （`node scripts/check-docs.mjs . --only=doc-index`）时才现形。
+  const root = path.resolve(rawRoot)
   const docsDir = path.join(root, 'docs')
   if (!fs.existsSync(docsDir)) return []
   const indexPath = path.join(docsDir, 'index.md')
